@@ -90,17 +90,16 @@ function App() {
         </div>
       </aside>
 
-      {/* 主界面切换 */}
-      <main className="main-content">
-        {activeTab === "dashboard" && (
+      <main className="main-content" style={{ position: "relative" }}>
+        <div style={{ display: activeTab === "dashboard" ? "block" : "none" }}>
           <Dashboard onNavigate={setActiveTab} hasRootCa={hasRootCa} />
-        )}
-        {activeTab === "rootca" && (
+        </div>
+        <div style={{ display: activeTab === "rootca" ? "block" : "none" }}>
           <RootCA onCaChange={checkRootCaStatus} hasRootCa={hasRootCa} />
-        )}
-        {activeTab === "issue" && (
+        </div>
+        <div style={{ display: activeTab === "issue" ? "block" : "none" }}>
           <IssueCert hasRootCa={hasRootCa} onNavigate={setActiveTab} />
-        )}
+        </div>
       </main>
     </div>
   );
