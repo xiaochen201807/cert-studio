@@ -4,7 +4,7 @@ use rcgen::{
     CertificateParams, KeyPair, DistinguishedName, DnType, SanType, IsCa,
     KeyUsagePurpose, ExtendedKeyUsagePurpose,
 };
-use rcgen::string::Ia5String;
+use rcgen::Ia5String;
 use time::{OffsetDateTime, Duration};
 use std::net::IpAddr;
 
