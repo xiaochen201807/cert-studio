@@ -21,7 +21,7 @@ pub struct IssueCertRequest {
     pub locality: Option<String>,
 }
 
-#[derive(serde::Serialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct CertBundle {
     pub cert_pem: String,
     pub key_pem: String,

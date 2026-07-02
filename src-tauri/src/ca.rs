@@ -1,7 +1,7 @@
 use crate::error::{AppError, AppResult};
 use crate::storage;
 use rcgen::{CertificateParams, KeyPair, DistinguishedName, DnType, IsCa, KeyUsagePurpose, BasicConstraints};
-use time::{OffsetDateTime, Duration};
+use ::time::{OffsetDateTime, Duration};
 use x509_parser::prelude::*;
 use x509_parser::pem::parse_x509_pem;
 use sha2::{Sha256, Digest};
