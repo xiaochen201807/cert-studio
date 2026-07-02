@@ -3,15 +3,14 @@
   min-height: 100vh;
 }
 
-/* 侧边导航栏 */
+/* 侧边导航栏：改写为精致暗黑冷灰色，去除玻璃发光，使用 1px 细线分隔 */
 .sidebar {
   width: 260px;
-  border-right: 1px solid var(--border-glass);
+  border-right: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   padding: 30px 20px;
-  background: hsla(224, 25%, 6%, 0.8);
-  backdrop-filter: blur(20px);
+  background: #09090b;
   position: fixed;
   height: 100vh;
   left: 0;
@@ -28,22 +27,24 @@
 }
 
 .brand-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  box-shadow: 0 0 15px hsla(203, 100%, 55%, 0.4);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  /* 去除多余的 AI 发光阴影 */
+  box-shadow: none;
 }
 
 .brand-name {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   list-style: none;
 }
 
@@ -51,54 +52,53 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 12px;
+  padding: 10px 14px;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   text-align: left;
   border: 1px solid transparent;
+  transition: all 0.15s ease;
 }
 
 .menu-item-btn:hover {
-  background: hsla(220, 20%, 40%, 0.08);
+  background: #18181b;
   color: var(--text-primary);
-  border-color: hsla(220, 20%, 40%, 0.15);
 }
 
 .menu-item-btn.active {
-  background: hsla(203, 100%, 55%, 0.12);
-  color: var(--primary-neon);
-  border-color: hsla(203, 100%, 55%, 0.25);
-  box-shadow: var(--glow-shadow);
+  background: rgba(79, 70, 229, 0.08);
+  color: #818cf8; /* 柔和的高雅紫蓝色 */
+  border-color: rgba(79, 70, 229, 0.2);
 }
 
 /* 侧栏状态展示卡 */
 .sidebar-status-card {
   margin-top: auto;
-  padding: 16px;
-  border-radius: 12px;
-  background: hsla(224, 25%, 10%, 0.5);
-  border: 1px solid var(--border-glass);
+  padding: 14px;
+  border-radius: 8px;
+  background: #121214;
+  border: 1px solid var(--border-subtle);
 }
 
 .status-indicator {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   margin-right: 8px;
 }
 
 .status-indicator.active {
-  background-color: var(--accent-neon);
-  box-shadow: 0 0 10px var(--accent-neon);
+  background-color: var(--accent-success);
+  box-shadow: none;
 }
 
 .status-indicator.inactive {
-  background-color: var(--secondary-neon);
-  box-shadow: 0 0 10px var(--secondary-neon);
+  background-color: var(--accent-danger);
+  box-shadow: none;
 }
 
 /* 主内容区域 */
@@ -109,17 +109,18 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: #09090b;
 }
 
-/* 页面切换淡入动画 */
+/* 页面切换淡入动画：保留微弱优雅的动效 */
 .page-fade-in {
-  animation: fadeIn 0.45s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  animation: fadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -131,27 +132,27 @@
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 9999px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   border: 1px solid transparent;
 }
 
 .badge-active {
-  background: hsla(152, 90%, 55%, 0.1);
-  color: var(--accent-neon);
-  border-color: hsla(152, 90%, 55%, 0.2);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-success);
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 .badge-inactive {
-  background: hsla(318, 100%, 62%, 0.1);
-  color: var(--secondary-neon);
-  border-color: hsla(318, 100%, 62%, 0.2);
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-danger);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .badge-blue {
-  background: hsla(203, 100%, 55%, 0.1);
-  color: var(--primary-neon);
-  border-color: hsla(203, 100%, 55%, 0.2);
+  background: rgba(79, 70, 229, 0.1);
+  color: #818cf8;
+  border-color: rgba(79, 70, 229, 0.2);
 }

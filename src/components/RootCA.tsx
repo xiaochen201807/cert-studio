@@ -207,16 +207,16 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
             <button
               onClick={handleExportRootCert}
               style={{
-                background: "linear-gradient(135deg, var(--primary-neon), #2563eb)",
+                background: "var(--primary-theme)",
                 color: "#fff",
-                padding: "12px 24px",
-                borderRadius: "10px",
+                padding: "10px 20px",
+                borderRadius: "6px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                fontSize: "14px",
-                fontWeight: 600,
-                boxShadow: "var(--glow-shadow)"
+                fontSize: "13px",
+                fontWeight: 500,
+                boxShadow: "none"
               }}
             >
               <Download size={16} />
@@ -231,12 +231,12 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                 }
               }}
               style={{
-                background: "hsla(220, 20%, 40%, 0.1)",
+                background: "#18181b",
                 color: "var(--text-secondary)",
-                padding: "12px 24px",
-                borderRadius: "10px",
-                border: "1px solid var(--border-glass)",
-                fontSize: "14px",
+                padding: "10px 20px",
+                borderRadius: "6px",
+                border: "1px solid var(--border-subtle)",
+                fontSize: "13px",
                 fontWeight: 500,
               }}
             >
@@ -247,21 +247,21 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
           {/* 本地安装说明 */}
           <div className="glass-panel" style={{ padding: "24px" }}>
             <h4 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <HelpCircle size={16} style={{ color: "var(--primary-neon)" }} />
+              <HelpCircle size={16} style={{ color: "#818cf8" }} />
               如何在本地安装受信任的根证书
             </h4>
             <p style={{ color: "var(--text-secondary)", fontSize: "12px", marginBottom: "14px", lineHeight: 1.5 }}>
               为了让您本地的 Chrome/Edge 等浏览器在访问自签 HTTPS 网站时不报错，您必须先通过上面的按钮导出根证书（`company-root-ca.crt`），并将其安装进系统受信任根证书存储区：
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div style={{ fontSize: "11px", background: "hsla(224, 25%, 5%, 0.5)", padding: "10px", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
-                <span style={{ color: "var(--primary-neon)", fontWeight: 600 }}>Windows (管理员权限 PowerShell)</span>
+              <div style={{ fontSize: "11px", background: "#09090b", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                <span style={{ color: "#818cf8", fontWeight: 600 }}>Windows (管理员权限 PowerShell)</span>
                 <code style={{ display: "block", marginTop: "4px", fontFamily: "monospace" }}>
                   certutil -addstore -f "Root" company-root-ca.crt
                 </code>
               </div>
-              <div style={{ fontSize: "11px", background: "hsla(224, 25%, 5%, 0.5)", padding: "10px", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
-                <span style={{ color: "var(--secondary-neon)", fontWeight: 600 }}>macOS (管理员权限 Terminal)</span>
+              <div style={{ fontSize: "11px", background: "#09090b", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                <span style={{ color: "var(--accent-success)", fontWeight: 600 }}>macOS (管理员权限 Terminal)</span>
                 <code style={{ display: "block", marginTop: "4px", fontFamily: "monospace" }}>
                   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain company-root-ca.crt
                 </code>
@@ -339,13 +339,13 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: "linear-gradient(135deg, var(--primary-neon), #2563eb)",
+                    background: "var(--primary-theme)",
                     color: "#fff",
-                    padding: "12px 24px",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    boxShadow: "var(--glow-shadow)",
+                    padding: "10px 18px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    boxShadow: "none",
                     width: "100%",
                     display: "flex",
                     justifyContent: "center",
@@ -367,7 +367,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   <button
                     type="button"
                     onClick={handleSelectCertFile}
-                    style={{ background: "transparent", color: "var(--primary-neon)", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
+                    style={{ background: "transparent", color: "#818cf8", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
                   >
                     <Upload size={14} />
                     选择证书文件
@@ -379,7 +379,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   value={importCertPem}
                   onChange={(e) => setImportCertPem(e.target.value)}
                   placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
-                  style={{ background: "hsla(224, 25%, 6%, 0.6)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", borderRadius: "10px", padding: "12px", fontFamily: "monospace", resize: "vertical", outline: "none" }}
+                  style={{ background: "#09090b", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 14px", fontFamily: "monospace", resize: "vertical", outline: "none" }}
                 />
               </div>
 
@@ -391,7 +391,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   <button
                     type="button"
                     onClick={handleSelectKeyFile}
-                    style={{ background: "transparent", color: "var(--primary-neon)", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
+                    style={{ background: "transparent", color: "#818cf8", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
                   >
                     <Upload size={14} />
                     选择私钥文件
@@ -403,7 +403,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   value={importKeyPem}
                   onChange={(e) => setImportKeyPem(e.target.value)}
                   placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
-                  style={{ background: "hsla(224, 25%, 6%, 0.6)", color: "var(--text-primary)", border: "1px solid var(--border-glass)", borderRadius: "10px", padding: "12px", fontFamily: "monospace", resize: "vertical", outline: "none" }}
+                  style={{ background: "#09090b", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "10px 14px", fontFamily: "monospace", resize: "vertical", outline: "none" }}
                 />
               </div>
 
@@ -412,13 +412,13 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                   type="submit"
                   disabled={isSubmitting}
                   style={{
-                    background: "linear-gradient(135deg, var(--secondary-neon), #db2777)",
+                    background: "var(--primary-theme)",
                     color: "#fff",
-                    padding: "12px 24px",
-                    borderRadius: "10px",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    boxShadow: "var(--glow-shadow-pink)",
+                    padding: "10px 18px",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    boxShadow: "none",
                     width: "100%",
                     display: "flex",
                     justifyContent: "center",

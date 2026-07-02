@@ -214,7 +214,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
             </button>
 
             {showAdvanced && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px", padding: "16px", background: "hsla(224, 25%, 5%, 0.3)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px", padding: "16px", background: "#09090b", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>组织 (Organization)</label>
                   <input type="text" value={org} onChange={(e) => setOrg(e.target.value)} style={{ padding: "8px 12px" }} />
@@ -244,13 +244,13 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
               type="submit"
               disabled={isIssuing}
               style={{
-                background: "linear-gradient(135deg, var(--primary-neon), #2563eb)",
+                background: "var(--primary-theme)",
                 color: "#fff",
-                padding: "12px 24px",
-                borderRadius: "10px",
-                fontSize: "14px",
-                fontWeight: 600,
-                boxShadow: "var(--glow-shadow)",
+                padding: "10px 18px",
+                borderRadius: "6px",
+                fontSize: "13px",
+                fontWeight: 500,
+                boxShadow: "none",
                 width: "100%",
                 display: "flex",
                 justifyContent: "center",
@@ -266,7 +266,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
         {bundle && (
           <div className="glass-panel page-fade-in" style={{ padding: "30px", display: "flex", flexDirection: "column", gap: "20px" }}>
             <h3 style={{ fontSize: "18px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px" }}>
-              <Eye size={20} style={{ color: "var(--accent-neon)" }} />
+              <Eye size={20} style={{ color: "var(--accent-success)" }} />
               <span>证书签发成果</span>
             </h3>
 
@@ -299,7 +299,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
             </div>
 
             {/* 内容预览框 */}
-            <div style={{ background: "hsla(224, 25%, 5%, 0.6)", border: "1px solid var(--border-glass)", borderRadius: "10px", padding: "16px", flex: 1, minHeight: "260px", maxHeight: "360px", overflowY: "auto" }}>
+            <div style={{ background: "#09090b", border: "1px solid var(--border-subtle)", borderRadius: "6px", padding: "16px", flex: 1, minHeight: "260px", maxHeight: "360px", overflowY: "auto" }}>
               {activeViewTab === "nginx" && (
                 <pre style={{ margin: 0, fontSize: "11px", fontFamily: "monospace", color: "var(--text-secondary)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
                   {bundle.nginx_config}
@@ -322,13 +322,13 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
               <button
                 onClick={handleExportBundle}
                 style={{
-                  background: "linear-gradient(135deg, var(--accent-neon), #059669)",
+                  background: "#10b981",
                   color: "#fff",
-                  padding: "12px 24px",
-                  borderRadius: "10px",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  boxShadow: "var(--glow-shadow-green)",
+                  padding: "10px 18px",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  boxShadow: "none",
                   width: "100%",
                   display: "flex",
                   justifyContent: "center",

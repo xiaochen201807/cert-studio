@@ -1,96 +1,98 @@
 :root {
-  /* HSL 现代高阶霓虹配色系统 */
-  --bg-dark: hsl(224, 25%, 8%);
-  --bg-card: hsla(224, 25%, 12%, 0.65);
-  --bg-card-hover: hsla(224, 25%, 16%, 0.8);
+  /* Linear / Vercel 极简冷碳灰暗黑配色系统 */
+  --bg-dark: #09090b;       /* Zinc-950 纯粹低沉背景 */
+  --bg-card: #121214;       /* Zinc-900 极其精致的卡片底色 */
+  --bg-card-hover: #1c1c1f; /* 略亮的 hover 底色 */
   
-  --primary-neon: hsl(203, 100%, 55%);      /* 冰蓝 */
-  --secondary-neon: hsl(318, 100%, 62%);    /* 霓虹粉 */
-  --accent-neon: hsl(152, 90%, 55%);        /* 薄荷绿 */
+  --primary-theme: #4f46e5;       /* Indigo-600 沉稳高贵的主题蓝紫色 */
+  --primary-theme-hover: #6366f1; /* Indigo-500 */
+  --primary-theme-light: rgba(79, 70, 229, 0.15);
   
-  --text-primary: hsl(210, 40%, 96%);
-  --text-secondary: hsl(215, 20%, 65%);
-  --text-muted: hsl(215, 12%, 45%);
+  --accent-success: #10b981;      /* 纯净森林绿，用于成功/就绪状态 */
+  --accent-warning: #f59e0b;      /* 琥珀黄 */
+  --accent-danger: #ef4444;       /* 警示红 */
   
-  --border-glass: hsla(220, 30%, 40%, 0.15);
-  --border-glass-glow: hsla(203, 100%, 55%, 0.3);
-  --border-focus: hsla(203, 100%, 55%, 0.6);
+  --text-primary: #f4f4f5;   /* Zinc-100 */
+  --text-secondary: #a1a1aa; /* Zinc-400 */
+  --text-muted: #52525b;     /* Zinc-600 */
   
-  --glow-shadow: 0 0 20px hsla(203, 100%, 55%, 0.15);
-  --glow-shadow-pink: 0 0 20px hsla(318, 100%, 62%, 0.15);
-  --glow-shadow-green: 0 0 20px hsla(152, 90%, 55%, 0.15);
+  --border-subtle: #27272a;  /* Zinc-800 1px 极细微边框 */
+  --border-focus: #4f46e5;   /* 主题聚焦色 */
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* 去除所有 AI 霓虹发光 */
+  --glow-shadow: none;
+  --glow-shadow-pink: none;
+  --glow-shadow-green: none;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
   background-color: var(--bg-dark);
-  background-image: 
-    radial-gradient(at 10% 10%, hsla(203, 100%, 55%, 0.05) 0px, transparent 50%),
-    radial-gradient(at 90% 90%, hsla(318, 100%, 62%, 0.05) 0px, transparent 50%);
-  background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 磨砂玻璃特效 */
+/* 磨砂玻璃面板改写为沉稳卡片，保留微弱的半透明与高雅 1px 细线边框 */
 .glass-panel {
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glass);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease;
 }
 
 .glass-panel:hover {
-  border-color: var(--border-glass-glow);
-  box-shadow: var(--glow-shadow);
+  border-color: #3f3f46; /* Zinc-700 极其低调的加深 */
 }
 
-/* 自定义炫酷滚动条 */
+/* 统一精致且非 AI 味的滚动条 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsla(224, 25%, 8%, 0.5);
+  background: var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsla(220, 20%, 40%, 0.3);
-  border-radius: 4px;
+  background: #27272a;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-neon);
-  box-shadow: var(--glow-shadow);
+  background: #3f3f46;
 }
 
 /* 输入框统一精致设计 */
 input, select, textarea {
-  background: hsla(224, 25%, 6%, 0.6);
-  border: 1px solid var(--border-glass);
+  background: #09090b;
+  border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  padding: 12px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: all 0.25s ease;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.2s ease;
   outline: none;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--border-focus);
-  box-shadow: 0 0 10px hsla(203, 100%, 55%, 0.2);
-  background: hsla(224, 25%, 6%, 0.85);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  background: #09090b;
 }
 
 /* 按钮现代微观动画 */
@@ -99,28 +101,31 @@ button {
   border: none;
   outline: none;
   font-weight: 500;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.2s ease;
 }
 
 button:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* 渐变文本 */
+/* 渐变文本全部被中和为优雅的极简白色与灰色排版，彻底去除 AI 赛博蓝粉渐变 */
 .gradient-text-blue {
-  background: linear-gradient(135deg, var(--primary-neon), #3b82f6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
 }
 
 .gradient-text-pink {
-  background: linear-gradient(135deg, var(--secondary-neon), #ec4899);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
 }
 
 .gradient-text-green {
-  background: linear-gradient(135deg, var(--accent-neon), #10b981);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--accent-success);
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
 }
