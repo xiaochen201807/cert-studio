@@ -11,9 +11,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Windows x64 (主流桌面平台)
           - platform: windows-latest
+            args: ""
+            arch_name: "x64"
+            setup: ""
+
+          # Windows ARM64 (支持新兴骁龙 X Elite 等 ARM 电脑)
+          - platform: windows-latest
+            args: "--target aarch64-pc-windows-msvc"
+            arch_name: "arm64"
+            setup: "rustup target add aarch64-pc-windows-msvc"
+
+          # macOS Universal (合二为一通用包，同时原生运行在 Intel 芯片和 Apple Silicon M 系列芯片上)
           - platform: macos-latest
+            args: "--target universal-apple-darwin"
+            arch_name: "universal"
+            setup: "rustup target add x86_64-apple-darwin aarch64-apple-darwin"
+
+          # Linux x64
           - platform: ubuntu-latest
+            args: ""
+            arch_name: "x64"
+            setup: ""
 
     runs-on: ${{ matrix.platform }}
 
@@ -25,6 +45,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # 动态安装交叉编译所需 Target
+      - name: setup rust target if needed
+        if: matrix.setup != ''
+        run: ${{ matrix.setup }}
 
       # Linux 系统下编译 Tauri v2 需要的前置依赖库
       - name: install dependencies (ubuntu only)
@@ -41,13 +66,15 @@ jobs:
 
       - name: build tauri application
         run: |
-          npm run tauri build
+          npm run tauri build -- ${{ matrix.args }}
 
       - name: upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: cert-studio-${{ matrix.platform }}
+          name: cert-studio-${{ runner.os }}-${{ matrix.arch_name }}
           path: |
             src-tauri/target/release/bundle/**
+            src-tauri/target/universal-apple-darwin/release/bundle/**
+            src-tauri/target/aarch64-pc-windows-msvc/release/bundle/**
             src-tauri/target/release/cert-studio
             src-tauri/target/release/cert-studio.exe
