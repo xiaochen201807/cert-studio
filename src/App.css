@@ -10,12 +10,13 @@
   display: flex;
   flex-direction: column;
   padding: 30px 20px;
-  background: #09090b;
+  background: var(--sidebar-bg);
   position: fixed;
   height: 100vh;
   left: 0;
   top: 0;
   z-index: 100;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .brand-section {
@@ -60,18 +61,18 @@
   font-size: 13px;
   text-align: left;
   border: 1px solid transparent;
-  transition: all 0.15s ease;
+  transition: all 0.15s ease, color 0.25s ease;
 }
 
 .menu-item-btn:hover {
-  background: #18181b;
+  background: var(--bg-card-hover);
   color: var(--text-primary);
 }
 
 .menu-item-btn.active {
-  background: rgba(79, 70, 229, 0.08);
-  color: #818cf8; /* 柔和的高雅紫蓝色 */
-  border-color: rgba(79, 70, 229, 0.2);
+  background: var(--primary-theme-light);
+  color: var(--primary-theme); /* 柔和的主题色 */
+  border-color: rgba(79, 70, 229, 0.15);
 }
 
 /* 侧栏状态展示卡 */
@@ -79,8 +80,9 @@
   margin-top: auto;
   padding: 14px;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .status-indicator {
@@ -109,7 +111,8 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #09090b;
+  background: var(--bg-dark);
+  transition: background-color 0.25s ease;
 }
 
 /* 页面切换淡入动画：保留微弱优雅的动效 */

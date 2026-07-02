@@ -1,8 +1,9 @@
 :root {
-  /* Linear / Vercel 极简冷碳灰暗黑配色系统 */
+  /* 默认：Linear / Vercel 极简冷碳灰暗黑配色系统 */
   --bg-dark: #09090b;       /* Zinc-950 纯粹低沉背景 */
   --bg-card: #121214;       /* Zinc-900 极其精致的卡片底色 */
   --bg-card-hover: #1c1c1f; /* 略亮的 hover 底色 */
+  --sidebar-bg: #09090b;
   
   --primary-theme: #4f46e5;       /* Indigo-600 沉稳高贵的主题蓝紫色 */
   --primary-theme-hover: #6366f1; /* Indigo-500 */
@@ -23,10 +24,43 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   
+  --input-bg: #09090b;
+  --code-bg: #09090b;
+  
   /* 去除所有 AI 霓虹发光 */
   --glow-shadow: none;
   --glow-shadow-pink: none;
   --glow-shadow-green: none;
+}
+
+:root[data-theme="light"] {
+  /* Vercel / Geist 极简雅致浅色明亮配色系统 */
+  --bg-dark: #f4f4f5;       /* Zinc-100 柔和浅灰色底 */
+  --bg-card: #ffffff;       /* 纯白卡片面板 */
+  --bg-card-hover: #fafafa;
+  --sidebar-bg: #ffffff;
+  
+  --primary-theme: #4f46e5;       /* 保持经典 Indigo 主题色 */
+  --primary-theme-hover: #4338ca;
+  --primary-theme-light: rgba(79, 70, 229, 0.08);
+  
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  
+  --text-primary: #09090b;   /* Zinc-950 */
+  --text-secondary: #52525b; /* Zinc-600 */
+  --text-muted: #71717a;     /* Zinc-500 */
+  
+  --border-subtle: #e4e4e7;  /* Zinc-200 极细灰色分隔线 */
+  --border-focus: #4f46e5;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  
+  --input-bg: #ffffff;
+  --code-bg: #f4f4f5;
 }
 
 * {
@@ -43,6 +77,7 @@ body {
   overflow-x: hidden;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* 磨砂玻璃面板改写为沉稳卡片，保留微弱的半透明与高雅 1px 细线边框 */
@@ -51,11 +86,11 @@ body {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   box-shadow: var(--shadow-md);
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .glass-panel:hover {
-  border-color: #3f3f46; /* Zinc-700 极其低调的加深 */
+  border-color: var(--text-muted); /* 更动态优雅的边框加深 */
 }
 
 /* 统一精致且非 AI 味的滚动条 */
@@ -69,30 +104,30 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: var(--border-subtle);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: var(--text-muted);
 }
 
 /* 输入框统一精致设计 */
 input, select, textarea {
-  background: #09090b;
+  background: var(--input-bg);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   padding: 10px 14px;
   border-radius: 8px;
   font-size: 13px;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, background-color 0.25s ease, border-color 0.25s ease;
   outline: none;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--border-focus);
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-  background: #09090b;
+  background: var(--input-bg);
 }
 
 /* 按钮现代微观动画 */
