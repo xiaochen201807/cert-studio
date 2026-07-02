@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldAlert, ShieldCheck, ArrowRight, Shield, Key, FileText } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ArrowRight, Shield, Key, FileText, Lock } from "lucide-react";
 
 interface DashboardProps {
   hasRootCa: boolean;

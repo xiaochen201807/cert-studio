@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { FileSpreadsheet, ShieldAlert, AlertTriangle, ChevronDown, ChevronUp, Download, Eye, Terminal, Code } from "lucide-react";
+import { FileSpreadsheet, ShieldAlert, ChevronDown, ChevronUp, Download, Eye, Terminal, Code } from "lucide-react";
 
 interface IssueCertProps {
   hasRootCa: boolean;
