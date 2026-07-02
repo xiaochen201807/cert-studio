@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { LayoutDashboard, ShieldCheck, FileSpreadsheet, Lock } from "lucide-react";
+import logoUrl from "./assets/logo.png";
 import "./App.css";
 
 import Dashboard from "./components/Dashboard";
@@ -34,7 +35,7 @@ function App() {
       {/* 侧栏导航 */}
       <aside className="sidebar">
         <div className="brand-section">
-          <img src="/src/assets/logo.png" alt="Logo" className="brand-logo" />
+          <img src={logoUrl} alt="Logo" className="brand-logo" />
           <span className="brand-name gradient-text-blue">Cert Studio</span>
         </div>
 
