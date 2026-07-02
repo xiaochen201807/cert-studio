@@ -1,0 +1,157 @@
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* 侧边导航栏 */
+.sidebar {
+  width: 260px;
+  border-right: 1px solid var(--border-glass);
+  display: flex;
+  flex-direction: column;
+  padding: 30px 20px;
+  background: hsla(224, 25%, 6%, 0.8);
+  backdrop-filter: blur(20px);
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  z-index: 100;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  padding-left: 8px;
+}
+
+.brand-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  box-shadow: 0 0 15px hsla(203, 100%, 55%, 0.4);
+}
+
+.brand-name {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+}
+
+.menu-item-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 12px;
+  font-size: 14px;
+  text-align: left;
+  border: 1px solid transparent;
+}
+
+.menu-item-btn:hover {
+  background: hsla(220, 20%, 40%, 0.08);
+  color: var(--text-primary);
+  border-color: hsla(220, 20%, 40%, 0.15);
+}
+
+.menu-item-btn.active {
+  background: hsla(203, 100%, 55%, 0.12);
+  color: var(--primary-neon);
+  border-color: hsla(203, 100%, 55%, 0.25);
+  box-shadow: var(--glow-shadow);
+}
+
+/* 侧栏状态展示卡 */
+.sidebar-status-card {
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 12px;
+  background: hsla(224, 25%, 10%, 0.5);
+  border: 1px solid var(--border-glass);
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.status-indicator.active {
+  background-color: var(--accent-neon);
+  box-shadow: 0 0 10px var(--accent-neon);
+}
+
+.status-indicator.inactive {
+  background-color: var(--secondary-neon);
+  box-shadow: 0 0 10px var(--secondary-neon);
+}
+
+/* 主内容区域 */
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  padding: 40px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 页面切换淡入动画 */
+.page-fade-in {
+  animation: fadeIn 0.45s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 状态徽章 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.badge-active {
+  background: hsla(152, 90%, 55%, 0.1);
+  color: var(--accent-neon);
+  border-color: hsla(152, 90%, 55%, 0.2);
+}
+
+.badge-inactive {
+  background: hsla(318, 100%, 62%, 0.1);
+  color: var(--secondary-neon);
+  border-color: hsla(318, 100%, 62%, 0.2);
+}
+
+.badge-blue {
+  background: hsla(203, 100%, 55%, 0.1);
+  color: var(--primary-neon);
+  border-color: hsla(203, 100%, 55%, 0.2);
+}

@@ -1,0 +1,126 @@
+:root {
+  /* HSL 现代高阶霓虹配色系统 */
+  --bg-dark: hsl(224, 25%, 8%);
+  --bg-card: hsla(224, 25%, 12%, 0.65);
+  --bg-card-hover: hsla(224, 25%, 16%, 0.8);
+  
+  --primary-neon: hsl(203, 100%, 55%);      /* 冰蓝 */
+  --secondary-neon: hsl(318, 100%, 62%);    /* 霓虹粉 */
+  --accent-neon: hsl(152, 90%, 55%);        /* 薄荷绿 */
+  
+  --text-primary: hsl(210, 40%, 96%);
+  --text-secondary: hsl(215, 20%, 65%);
+  --text-muted: hsl(215, 12%, 45%);
+  
+  --border-glass: hsla(220, 30%, 40%, 0.15);
+  --border-glass-glow: hsla(203, 100%, 55%, 0.3);
+  --border-focus: hsla(203, 100%, 55%, 0.6);
+  
+  --glow-shadow: 0 0 20px hsla(203, 100%, 55%, 0.15);
+  --glow-shadow-pink: 0 0 20px hsla(318, 100%, 62%, 0.15);
+  --glow-shadow-green: 0 0 20px hsla(152, 90%, 55%, 0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: var(--bg-dark);
+  background-image: 
+    radial-gradient(at 10% 10%, hsla(203, 100%, 55%, 0.05) 0px, transparent 50%),
+    radial-gradient(at 90% 90%, hsla(318, 100%, 62%, 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* 磨砂玻璃特效 */
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.glass-panel:hover {
+  border-color: var(--border-glass-glow);
+  box-shadow: var(--glow-shadow);
+}
+
+/* 自定义炫酷滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsla(224, 25%, 8%, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsla(220, 20%, 40%, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-neon);
+  box-shadow: var(--glow-shadow);
+}
+
+/* 输入框统一精致设计 */
+input, select, textarea {
+  background: hsla(224, 25%, 6%, 0.6);
+  border: 1px solid var(--border-glass);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.25s ease;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 10px hsla(203, 100%, 55%, 0.2);
+  background: hsla(224, 25%, 6%, 0.85);
+}
+
+/* 按钮现代微观动画 */
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* 渐变文本 */
+.gradient-text-blue {
+  background: linear-gradient(135deg, var(--primary-neon), #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-pink {
+  background: linear-gradient(135deg, var(--secondary-neon), #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-text-green {
+  background: linear-gradient(135deg, var(--accent-neon), #10b981);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
