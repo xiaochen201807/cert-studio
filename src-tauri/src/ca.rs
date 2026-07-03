@@ -1,10 +1,23 @@
 use crate::error::{AppError, AppResult};
 use crate::storage;
+use base64::{engine::general_purpose, Engine as _};
+use openssl::{
+    hash::MessageDigest,
+    pkcs5::pbkdf2_hmac,
+    symm::{decrypt_aead, encrypt_aead, Cipher},
+};
 use rcgen::{CertificateParams, KeyPair, DistinguishedName, DnType, IsCa, KeyUsagePurpose, BasicConstraints};
 use ::time::{OffsetDateTime, Duration};
 use x509_parser::prelude::*;
 use x509_parser::pem::parse_x509_pem;
 use sha2::{Sha256, Digest};
+
+const ROOT_CA_BACKUP_VERSION: u32 = 1;
+const ROOT_CA_BACKUP_ITERATIONS: usize = 200_000;
+const ROOT_CA_BACKUP_SALT_LEN: usize = 16;
+const ROOT_CA_BACKUP_NONCE_LEN: usize = 12;
+const ROOT_CA_BACKUP_TAG_LEN: usize = 16;
+const ROOT_CA_BACKUP_AAD: &[u8] = b"cert-studio-root-ca-backup-v1";
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct RootCaInfo {
@@ -13,6 +26,24 @@ pub struct RootCaInfo {
     pub not_before: String,
     pub not_after: String,
     pub sha256_fingerprint: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+struct RootCaBackupPayload {
+    cert_pem: String,
+    key_pem: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+struct RootCaBackupFile {
+    version: u32,
+    kdf: String,
+    cipher: String,
+    iterations: usize,
+    salt_base64: String,
+    nonce_base64: String,
+    tag_base64: String,
+    ciphertext_base64: String,
 }
 
 // 解析 PEM 证书信息
@@ -118,6 +149,125 @@ pub fn import_root_ca(
     storage::save_root_ca_key(&app_handle, &key_pem)?;
     
     Ok(info)
+}
+
+fn derive_backup_key(password: &str, salt: &[u8], iterations: usize) -> AppResult<[u8; 32]> {
+    let password = password.trim();
+    if password.is_empty() {
+        return Err(AppError::Custom("请设置 Root CA 备份包密码。".to_string()));
+    }
+
+    let mut key = [0u8; 32];
+    pbkdf2_hmac(
+        password.as_bytes(),
+        salt,
+        iterations,
+        MessageDigest::sha256(),
+        &mut key,
+    )?;
+    Ok(key)
+}
+
+fn encrypt_root_ca_backup(payload: &RootCaBackupPayload, password: &str) -> AppResult<RootCaBackupFile> {
+    use rand::RngCore;
+
+    let mut salt = [0u8; ROOT_CA_BACKUP_SALT_LEN];
+    let mut nonce = [0u8; ROOT_CA_BACKUP_NONCE_LEN];
+    rand::thread_rng().fill_bytes(&mut salt);
+    rand::thread_rng().fill_bytes(&mut nonce);
+
+    let key = derive_backup_key(password, &salt, ROOT_CA_BACKUP_ITERATIONS)?;
+    let plaintext = serde_json::to_vec(payload)?;
+    let mut tag = [0u8; ROOT_CA_BACKUP_TAG_LEN];
+    let ciphertext = encrypt_aead(
+        Cipher::aes_256_gcm(),
+        &key,
+        Some(&nonce),
+        ROOT_CA_BACKUP_AAD,
+        &plaintext,
+        &mut tag,
+    )?;
+
+    Ok(RootCaBackupFile {
+        version: ROOT_CA_BACKUP_VERSION,
+        kdf: "PBKDF2-HMAC-SHA256".to_string(),
+        cipher: "AES-256-GCM".to_string(),
+        iterations: ROOT_CA_BACKUP_ITERATIONS,
+        salt_base64: general_purpose::STANDARD.encode(salt),
+        nonce_base64: general_purpose::STANDARD.encode(nonce),
+        tag_base64: general_purpose::STANDARD.encode(tag),
+        ciphertext_base64: general_purpose::STANDARD.encode(ciphertext),
+    })
+}
+
+fn decrypt_root_ca_backup(backup: &RootCaBackupFile, password: &str) -> AppResult<RootCaBackupPayload> {
+    if backup.version != ROOT_CA_BACKUP_VERSION {
+        return Err(AppError::Custom(format!(
+            "不支持的 Root CA 备份包版本: {}",
+            backup.version
+        )));
+    }
+    if backup.kdf != "PBKDF2-HMAC-SHA256" || backup.cipher != "AES-256-GCM" {
+        return Err(AppError::Custom("不支持的 Root CA 备份包加密参数。".to_string()));
+    }
+
+    let salt = general_purpose::STANDARD.decode(&backup.salt_base64)?;
+    let nonce = general_purpose::STANDARD.decode(&backup.nonce_base64)?;
+    let tag = general_purpose::STANDARD.decode(&backup.tag_base64)?;
+    let ciphertext = general_purpose::STANDARD.decode(&backup.ciphertext_base64)?;
+
+    if nonce.len() != ROOT_CA_BACKUP_NONCE_LEN || tag.len() != ROOT_CA_BACKUP_TAG_LEN {
+        return Err(AppError::Custom("Root CA 备份包密文参数长度不正确。".to_string()));
+    }
+
+    let key = derive_backup_key(password, &salt, backup.iterations)?;
+    let plaintext = decrypt_aead(
+        Cipher::aes_256_gcm(),
+        &key,
+        Some(&nonce),
+        ROOT_CA_BACKUP_AAD,
+        &ciphertext,
+        &tag,
+    )
+    .map_err(|_| AppError::Custom("Root CA 备份包密码错误或文件已损坏。".to_string()))?;
+
+    serde_json::from_slice(&plaintext).map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn export_root_ca_backup(
+    app_handle: tauri::AppHandle,
+    output_dir: String,
+    password: String,
+) -> AppResult<String> {
+    let cert_pem = storage::get_root_ca_cert(&app_handle)?;
+    let key_pem = storage::get_root_ca_key(&app_handle)?;
+    let payload = RootCaBackupPayload { cert_pem, key_pem };
+    let backup = encrypt_root_ca_backup(&payload, &password)?;
+    let backup_json = serde_json::to_string_pretty(&backup)?;
+
+    let out_path = std::path::Path::new(&output_dir);
+    if !out_path.exists() {
+        std::fs::create_dir_all(out_path)?;
+    }
+
+    let backup_path = out_path.join("cert-studio-root-ca-backup.json");
+    std::fs::write(&backup_path, backup_json)?;
+
+    Ok(backup_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn import_root_ca_backup(
+    app_handle: tauri::AppHandle,
+    backup_path: String,
+    password: String,
+) -> AppResult<RootCaInfo> {
+    let backup_json = std::fs::read_to_string(backup_path)?;
+    let backup: RootCaBackupFile = serde_json::from_str(&backup_json)?;
+    let payload = decrypt_root_ca_backup(&backup, &password)?;
+
+    import_root_ca(app_handle, payload.cert_pem, payload.key_pem)
 }
 
 #[tauri::command]
