@@ -136,3 +136,77 @@ pub fn read_text_file(path: String) -> AppResult<String> {
     let content = std::fs::read_to_string(path)?;
     Ok(content)
 }
+
+#[tauri::command]
+pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
+    // 1. 获取根证书的绝对路径
+    let cert_path = storage::get_root_ca_cert_path(&app_handle)?;
+    if !cert_path.exists() {
+        return Err(AppError::Custom("未找到 Root CA 证书，请先生成或导入根证书。".to_string()));
+    }
+    
+    // 2. 根据不同的操作系统执行不同的命令
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        // macOS: 通过 security add-trusted-cert 命令导入
+        let status = Command::new("security")
+            .arg("add-trusted-cert")
+            .arg("-d")
+            .arg("-r")
+            .arg("trustRoot")
+            .arg("-k")
+            .arg("/Library/Keychains/System.keychain")
+            .arg(cert_path)
+            .status()
+            .map_err(|e| AppError::Custom(format!("执行 security 命令失败: {}", e)))?;
+            
+        if !status.success() {
+            return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        // Windows: 通过 certutil 命令导入
+        let status = Command::new("certutil")
+            .arg("-addstore")
+            .arg("-f")
+            .arg("ROOT")
+            .arg(cert_path)
+            .status()
+            .map_err(|e| AppError::Custom(format!("执行 certutil 命令失败: {}", e)))?;
+            
+        if !status.success() {
+            return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        // Linux (以 Debian/Ubuntu 为例): 复制到 /usr/local/share/ca-certificates 并 update-ca-certificates
+        // 这需要 pkexec 获取 root 权限
+        let cert_dest = std::path::Path::new("/usr/local/share/ca-certificates/cert-studio-root-ca.crt");
+        
+        let script = format!(
+            "cp '{}' '{}' && update-ca-certificates",
+            cert_path.to_string_lossy(),
+            cert_dest.to_string_lossy()
+        );
+        
+        let status = Command::new("pkexec")
+            .arg("sh")
+            .arg("-c")
+            .arg(script)
+            .status()
+            .map_err(|e| AppError::Custom(format!("执行 pkexec 授权失败: {}", e)))?;
+            
+        if !status.success() {
+            return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
+        }
+    }
+
+    Ok(())
+}

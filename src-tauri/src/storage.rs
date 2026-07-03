@@ -120,6 +120,12 @@ pub fn save_root_ca_cert(app_handle: &AppHandle, cert_pem: &str) -> AppResult<()
     Ok(())
 }
 
+// 获取根证书文件物理路径
+pub fn get_root_ca_cert_path(app_handle: &AppHandle) -> AppResult<PathBuf> {
+    let app_dir = get_app_dir(app_handle)?;
+    Ok(app_dir.join("root-ca.crt"))
+}
+
 // 获取根证书 PEM
 pub fn get_root_ca_cert(app_handle: &AppHandle) -> AppResult<String> {
     let app_dir = get_app_dir(app_handle)?;

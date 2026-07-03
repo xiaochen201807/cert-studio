@@ -141,17 +141,17 @@ const Dashboard: React.FC<DashboardProps> = ({ hasRootCa, onNavigate }) => {
       <div className="glass-panel" style={{ padding: "30px" }}>
         <h3 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "20px", color: "var(--text-primary)" }}>3 步开始开发测试</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "24px" }}>
-          <div style={{ background: "#09090b", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
+          <div style={{ background: "var(--bg-card)", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
             <div style={{ fontSize: "24px", fontWeight: 700, color: "#818cf8", marginBottom: "8px", letterSpacing: "-0.02em" }}>01</div>
             <h4 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "6px", color: "var(--text-primary)" }}>初始化 Root CA</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.5 }}>点击 Root CA 导航，创建或者导入根证书。导出根证书并安装到您的操作系统“受信任的根证书颁发机构”中。</p>
           </div>
-          <div style={{ background: "#09090b", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
+          <div style={{ background: "var(--bg-card)", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
             <div style={{ fontSize: "24px", fontWeight: 700, color: "var(--accent-success)", marginBottom: "8px", letterSpacing: "-0.02em" }}>02</div>
             <h4 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "6px", color: "var(--text-primary)" }}>签发服务端证书</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.5 }}>输入您局域网开发使用的域名（如 *.company.com）或 IP（如 127.0.0.1），生成您的服务端 SSL 证书对。</p>
           </div>
-          <div style={{ background: "#09090b", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
+          <div style={{ background: "var(--bg-card)", padding: "20px", borderRadius: "8px", border: "1px solid var(--border-subtle)" }}>
             <div style={{ fontSize: "24px", fontWeight: 700, color: "#f43f5e", marginBottom: "8px", letterSpacing: "-0.02em" }}>03</div>
             <h4 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "6px", color: "var(--text-primary)" }}>应用到您的服务</h4>
             <p style={{ color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.5 }}>导出证书。参考生成的 nginx.conf 示例配置 Web 服务，或者根据 electron.md 使用自签 HTTPS 连接。</p>

@@ -19,6 +19,7 @@ interface RootCaInfo {
 const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
   const [caInfo, setCaInfo] = useState<RootCaInfo | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"create" | "import">("create");
+  const [isTrusting, setIsTrusting] = useState(false);
   
   // 创建 CA 的表单状态
   const [cn, setCn] = useState("Company Root CA");
@@ -140,6 +141,19 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
     }
   };
 
+  // 一键导入并信任根证书
+  const handleTrustRootCert = async () => {
+    setIsTrusting(true);
+    try {
+      await invoke("import_system_trust");
+      alert("🎉 根证书已成功导入并信任！您现在可以在浏览器中无警告访问您签发的证书了。");
+    } catch (err) {
+      alert("导入信任失败或被取消: " + err);
+    } finally {
+      setIsTrusting(false);
+    }
+  };
+
   return (
     <div className="page-fade-in" style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
       {/* 头部标题 */}
@@ -203,7 +217,29 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "16px" }}>
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            <button
+              onClick={handleTrustRootCert}
+              disabled={isTrusting}
+              style={{
+                background: "linear-gradient(135deg, var(--accent-success), #059669)",
+                color: "#fff",
+                padding: "10px 20px",
+                borderRadius: "6px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: 600,
+                boxShadow: "none",
+                opacity: isTrusting ? 0.7 : 1,
+                cursor: isTrusting ? "not-allowed" : "pointer"
+              }}
+            >
+              <ShieldCheck size={16} />
+              <span>{isTrusting ? "正在导入并信任..." : "一键导入并信任根证书"}</span>
+            </button>
+
             <button
               onClick={handleExportRootCert}
               style={{
@@ -231,7 +267,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                 }
               }}
               style={{
-                background: "#18181b",
+                background: "var(--bg-card)",
                 color: "var(--text-secondary)",
                 padding: "10px 20px",
                 borderRadius: "6px",

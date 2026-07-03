@@ -41,8 +41,17 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
   // 执行签发
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsIssuing(true);
-    setBundle(null);
+
+    // 校验常用名称
+    const trimmedCn = cn.trim();
+    if (trimmedCn.includes(",") || trimmedCn.includes("，")) {
+      alert("常用名称 (Common Name) 只能填写一个，不能包含逗号！");
+      return;
+    }
+    if (trimmedCn.includes("*")) {
+      alert("常用名称 (Common Name) 不支持通配符！");
+      return;
+    }
 
     // 解析 DNS Names 与 IP 地址
     const dnsNames = dnsInput
@@ -52,8 +61,17 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
 
     const ipAddresses = ipInput
       .split(",")
-      .map((ip) => ip.trim())
+      .map((ip: string) => ip.trim())
       .filter((ip) => ip.length > 0);
+
+    // 校验 IP 地址是否包含通配符
+    if (ipAddresses.some((ip: string) => ip.includes("*"))) {
+      alert("IP 使用者备用名称 (IP SANs) 不支持通配符！");
+      return;
+    }
+
+    setIsIssuing(true);
+    setBundle(null);
 
     try {
       const res = await invoke<CertBundle>("issue_server_cert", {
@@ -150,30 +168,34 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
             <label style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>
-              常用名称 (Common Name) *
-            </label>
-            <input
-              type="text"
-              required
-              value={cn}
-              onChange={(e) => setCn(e.target.value)}
-              placeholder="例如: pdf.internal.company.com"
-            />
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>主域名标识，不支持通配符。</span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>
               DNS 使用者备用名称 (DNS SANs) *
             </label>
             <input
               type="text"
               required
               value={dnsInput}
-              onChange={(e) => setDnsInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDnsInput(e.target.value)}
               placeholder="多个域名用英文逗号分隔"
             />
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>可以访问此服务的域名列表（如: pdf.internal.company.com, localhost）。</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+              允许通过域名访问此服务的列表。支持填写多个（用英文逗号分隔），且支持通配符域名（如 *.internal.company.com）。
+            </span>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>
+              常用名称 (Common Name) *
+            </label>
+            <input
+              type="text"
+              required
+              value={cn}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCn(e.target.value)}
+              placeholder="例如: pdf.internal.company.com"
+            />
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+              证书关联的单个主域名（如 pdf.internal.company.com）。只能填写一个，且不支持通配符。为兼容老旧系统，一般填写您在“DNS 使用者备用名称”中设置的主域名。
+            </span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -183,10 +205,12 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
             <input
               type="text"
               value={ipInput}
-              onChange={(e) => setIpInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setIpInput(e.target.value)}
               placeholder="多个 IP 用英文逗号分隔"
             />
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>可以通过 IP 访问的列表（如: 127.0.0.1, 10.0.0.5）。</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+              允许通过 IP 直接访问此服务的列表（如 127.0.0.1, 10.0.0.5）。支持填写多个（用英文逗号分隔），但不支持通配符。若只用域名访问可留空。
+            </span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -197,7 +221,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
               type="number"
               required
               value={days}
-              onChange={(e) => setDays(Number(e.target.value))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDays(Number(e.target.value))}
               placeholder="默认 365 天"
             />
           </div>
@@ -217,23 +241,23 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
               <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginTop: "14px", padding: "16px", background: "#09090b", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>组织 (Organization)</label>
-                  <input type="text" value={org} onChange={(e) => setOrg(e.target.value)} style={{ padding: "8px 12px" }} />
+                  <input type="text" value={org} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrg(e.target.value)} style={{ padding: "8px 12px" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>部门 (Organizational Unit)</label>
-                  <input type="text" value={ou} onChange={(e) => setOu(e.target.value)} style={{ padding: "8px 12px" }} />
+                  <input type="text" value={ou} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOu(e.target.value)} style={{ padding: "8px 12px" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>国家代码 (Country)</label>
-                  <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} maxLength={2} placeholder="CN" style={{ padding: "8px 12px" }} />
+                  <input type="text" value={country} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCountry(e.target.value)} maxLength={2} placeholder="CN" style={{ padding: "8px 12px" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>省/直辖市 (State)</label>
-                  <input type="text" value={state} onChange={(e) => setState(e.target.value)} style={{ padding: "8px 12px" }} />
+                  <input type="text" value={state} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setState(e.target.value)} style={{ padding: "8px 12px" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   <label style={{ fontSize: "12px", color: "var(--text-muted)" }}>城市 (Locality)</label>
-                  <input type="text" value={locality} onChange={(e) => setLocality(e.target.value)} style={{ padding: "8px 12px" }} />
+                  <input type="text" value={locality} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLocality(e.target.value)} style={{ padding: "8px 12px" }} />
                 </div>
               </div>
             )}

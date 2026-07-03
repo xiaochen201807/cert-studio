@@ -7,7 +7,7 @@ mod ca;
 mod cert;
 mod export;
 
-use ca::{create_root_ca, import_root_ca, get_root_ca_info, has_valid_root_ca, read_text_file};
+use ca::{create_root_ca, import_root_ca, get_root_ca_info, has_valid_root_ca, read_text_file, import_system_trust};
 use cert::issue_server_cert;
 use export::{export_cert_bundle, export_root_ca_cert};
 
@@ -29,7 +29,8 @@ fn main() {
             read_text_file,
             issue_server_cert,
             export_cert_bundle,
-            export_root_ca_cert
+            export_root_ca_cert,
+            import_system_trust
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
