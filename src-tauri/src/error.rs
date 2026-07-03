@@ -14,6 +14,12 @@ pub enum AppError {
     #[error("JSON 序列化错误: {0}")]
     Serde(#[from] serde_json::Error),
 
+    #[error("OpenSSL 错误: {0}")]
+    OpenSsl(#[from] openssl::error::ErrorStack),
+
+    #[error("Base64 解码错误: {0}")]
+    Base64(#[from] base64::DecodeError),
+
     #[error("X509 解析错误: {0}")]
     X509(String),
 

@@ -23,6 +23,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
   const [dnsInput, setDnsInput] = useState("pdf.internal.company.com, localhost");
   const [ipInput, setIpInput] = useState("127.0.0.1");
   const [days, setDays] = useState(365);
+  const [pfxPassword, setPfxPassword] = useState("");
   
   // 额外的高级 DN 属性
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -69,6 +70,10 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
       alert("IP 使用者备用名称 (IP SANs) 不支持通配符！");
       return;
     }
+    if (!pfxPassword.trim()) {
+      alert("请设置 PFX/PKCS#12 导出密码，用于保护 server.pfx 中的私钥。");
+      return;
+    }
 
     setIsIssuing(true);
     setBundle(null);
@@ -85,6 +90,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
           country: country || null,
           state: state || null,
           locality: locality || null,
+          pfx_password: pfxPassword,
         },
       });
       setBundle(res);
@@ -110,7 +116,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
           bundle: bundle,
           outputDir: dir
         });
-        alert(`🎉 证书束已成功导出！\n\n导出目录包含以下文件：\n- server.crt (证书)\n- server.key (私钥)\n- fullchain.pem (含根的完整链)\n- company-root-ca.crt (根证书)\n- nginx.conf (Nginx 配置示例)\n- electron.md (Electron 接入说明)\n\n路径: ${dir}`);
+        alert(`🎉 证书束已成功导出！\n\n导出目录包含以下文件：\n- server.crt (证书)\n- server.key (私钥)\n- server.pfx (PFX/PKCS#12 证书包)\n- fullchain.pem (含根的完整链)\n- company-root-ca.crt (根证书)\n- nginx.conf (Nginx 配置示例)\n- electron.md (Electron 接入说明)\n\nserver.pfx 使用签发时设置的 PFX 密码保护。\n\n路径: ${dir}`);
       }
     } catch (err) {
       alert("导出失败: " + err);
@@ -224,6 +230,22 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDays(Number(e.target.value))}
               placeholder="默认 365 天"
             />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>
+              PFX/PKCS#12 导出密码 *
+            </label>
+            <input
+              type="password"
+              required
+              value={pfxPassword}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPfxPassword(e.target.value)}
+              placeholder="用于保护 server.pfx 中的私钥"
+            />
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
+              导出的 server.pfx 会使用该密码保护，适合导入 Windows、IIS、.NET 或其他需要 PFX/PKCS#12 的工具链。请自行妥善保存该密码。
+            </span>
           </div>
 
           {/* 高级属性折叠 */}
