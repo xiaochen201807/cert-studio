@@ -1,0 +1,36 @@
+name: 开发任务
+description: 拆分 roadmap、工程化、文档或维护任务
+title: "task: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 这个任务完成后应该达到什么状态？
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 范围
+      description: 明确包含和不包含的内容，避免 PR 扩散。
+      placeholder: |
+        包含：
+        - ...
+
+        不包含：
+        - ...
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 列出可以判断任务完成的检查项。
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
