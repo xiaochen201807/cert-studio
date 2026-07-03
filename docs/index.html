@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Cert Studio 本地 Root CA 与 HTTPS 证书签发工具文档。" />
+    <title>Cert Studio 文档</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --text: #172033;
+        --muted: #5f6b7a;
+        --line: #d9dee8;
+        --brand: #0f766e;
+        --brand-dark: #115e59;
+        --accent: #b45309;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.6;
+      }
+
+      header {
+        background: #132033;
+        color: #fff;
+        padding: 56px 24px 42px;
+      }
+
+      .wrap {
+        width: min(1080px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+        gap: 32px;
+        align-items: end;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.05;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 17px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .lead {
+        max-width: 720px;
+        color: #d7dde8;
+        font-size: 18px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 6px;
+        background: var(--brand);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+      }
+
+      a.button.secondary {
+        background: #ffffff;
+        color: #132033;
+      }
+
+      .status {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .status strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      main {
+        padding: 32px 0 56px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 20px;
+      }
+
+      .panel p,
+      li {
+        color: var(--muted);
+      }
+
+      section {
+        margin-top: 28px;
+      }
+
+      ol,
+      ul {
+        margin: 0;
+        padding-left: 22px;
+      }
+
+      code {
+        background: #eef2f7;
+        border: 1px solid #dbe2ec;
+        border-radius: 4px;
+        padding: 2px 5px;
+        color: #203047;
+      }
+
+      .warning {
+        border-left: 4px solid var(--accent);
+      }
+
+      footer {
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        padding: 24px 0;
+        font-size: 14px;
+      }
+
+      @media (max-width: 760px) {
+        .hero,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          padding-top: 40px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap hero">
+        <div>
+          <h1>Cert Studio</h1>
+          <p class="lead">本地 Root CA 管理与内部 HTTPS 证书签发工具，面向开发、内网服务和企业测试环境。</p>
+          <div class="actions">
+            <a class="button" href="https://github.com/xiaochen201807/cert-studio/releases">下载 Release</a>
+            <a class="button secondary" href="https://github.com/xiaochen201807/cert-studio">查看源码</a>
+          </div>
+        </div>
+        <div class="status">
+          <strong>当前交付能力</strong>
+          <p>Root CA 创建/导入、系统信任导入、PFX 导出、Root CA 备份迁移、Release 自动打包和 PR 必过检查。</p>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="grid" aria-label="核心能力">
+        <article class="panel">
+          <h3>Root CA 管理</h3>
+          <p>创建、导入、备份和迁移本地 Root CA，私钥优先写入系统密钥环，必要时回退到本地加密存储。</p>
+        </article>
+        <article class="panel">
+          <h3>证书签发</h3>
+          <p>支持 DNS SAN、IP SAN、PFX/PKCS#12、Nginx 配置和 Electron 接入说明导出。</p>
+        </article>
+        <article class="panel">
+          <h3>工程化流程</h3>
+          <p>通过 GitHub Actions、Dependabot、分支保护、模板和 Project 管理持续交付节奏。</p>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h2>快速开始</h2>
+        <ol>
+          <li>从 GitHub Release 下载当前平台安装包。</li>
+          <li>打开 Root CA 页面，创建或导入 Root CA。</li>
+          <li>按需将 Root CA 导入系统信任区。</li>
+          <li>在证书签发页面填写域名、IP、有效期和 PFX 密码。</li>
+          <li>导出证书束，并把 <code>server.key</code> 保存在受控位置。</li>
+        </ol>
+      </section>
+
+      <section class="panel warning">
+        <h2>安全边界</h2>
+        <ul>
+          <li>不要提交或上传 Root CA 私钥、Root CA 备份包、PFX 密码或 <code>server.key</code>。</li>
+          <li><code>company-root-ca.crt</code> 是公开证书，可以分发给需要信任该 Root CA 的客户端。</li>
+          <li>Cert Studio 适用于本地开发、内网和测试环境，不是公网 CA 服务。</li>
+        </ul>
+      </section>
+
+      <section class="grid" aria-label="项目入口">
+        <article class="panel">
+          <h3>路线图</h3>
+          <p><a href="https://github.com/xiaochen201807/cert-studio/blob/main/RLOADMAP.md">查看 RLOADMAP.md</a></p>
+        </article>
+        <article class="panel">
+          <h3>任务管理</h3>
+          <p><a href="https://github.com/xiaochen201807/cert-studio/issues">查看 Issues</a></p>
+        </article>
+        <article class="panel">
+          <h3>使用说明</h3>
+          <p><a href="https://github.com/xiaochen201807/cert-studio/wiki">查看 Wiki</a></p>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">Cert Studio 文档站由 GitHub Pages 自动部署。</div>
+    </footer>
+  </body>
+</html>
