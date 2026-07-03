@@ -250,3 +250,34 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 > **安全提示**：请勿在生产环境使用 `callback(true)` 忽略所有证书错误，这会面临中间人攻击的风险。
 "#.to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nginx_config_uses_requested_domain_and_expected_files() {
+        let config = generate_nginx_config_internal("api.internal.example.com");
+
+        assert!(config.contains("server_name api.internal.example.com;"));
+        assert!(config.contains("ssl_certificate /etc/nginx/ssl/fullchain.pem;"));
+        assert!(config.contains("ssl_certificate_key /etc/nginx/ssl/server.key;"));
+        assert!(config.contains("proxy_pass http://localhost:8080;"));
+    }
+
+    #[test]
+    fn electron_readme_mentions_extra_ca_and_production_risk() {
+        let readme = generate_electron_readme_internal();
+
+        assert!(readme.contains("NODE_EXTRA_CA_CERTS"));
+        assert!(readme.contains("请勿在生产环境使用"));
+    }
+
+    #[test]
+    fn pfx_generation_requires_non_empty_password_before_parsing_inputs() {
+        let err = generate_pfx_base64_internal("", "", "", "example.test", "   ")
+            .expect_err("empty PFX password should fail");
+
+        assert!(err.to_string().contains("请设置 PFX/PKCS#12 导出密码"));
+    }
+}
