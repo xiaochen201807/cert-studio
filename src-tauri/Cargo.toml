@@ -19,3 +19,5 @@ time = { version = "0.3", features = ["formatting", "parsing"] }
 keyring = { version = "3.0", features = ["apple-native", "windows-native"] }
 rand = "0.8"
 sha2 = "0.10"
+openssl = { version = "0.10", features = ["vendored"] }
+base64 = "0.22"

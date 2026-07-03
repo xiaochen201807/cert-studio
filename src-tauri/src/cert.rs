@@ -1,5 +1,7 @@
 use crate::error::{AppError, AppResult};
 use crate::storage;
+use base64::{engine::general_purpose, Engine as _};
+use openssl::{pkcs12::Pkcs12, pkey::PKey, stack::Stack, x509::X509};
 use rcgen::{
     CertificateParams, KeyPair, DistinguishedName, DnType, SanType, IsCa,
     KeyUsagePurpose, ExtendedKeyUsagePurpose,
@@ -19,6 +21,7 @@ pub struct IssueCertRequest {
     pub country: Option<String>,
     pub state: Option<String>,
     pub locality: Option<String>,
+    pub pfx_password: String,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -106,6 +109,15 @@ pub fn issue_server_cert_internal(
     // 拼接 fullchain
     let fullchain_pem = format!("{}\n{}", cert_pem, ca_cert_pem);
 
+    // 生成受密码保护的 PFX/PKCS#12 证书包，便于 Windows/IIS/.NET 等工具链导入。
+    let pfx_base64 = generate_pfx_base64_internal(
+        &cert_pem,
+        &key_pem,
+        &ca_cert_pem,
+        &request.common_name,
+        &request.pfx_password,
+    )?;
+
     // nginx 配置文件生成
     let nginx_config = generate_nginx_config_internal(&request.common_name);
 
@@ -116,7 +128,7 @@ pub fn issue_server_cert_internal(
         cert_pem,
         key_pem,
         fullchain_pem,
-        pfx_base64: None,
+        pfx_base64: Some(pfx_base64),
         nginx_config,
         electron_readme,
     })
@@ -128,6 +140,38 @@ pub fn issue_server_cert(
     request: IssueCertRequest,
 ) -> AppResult<CertBundle> {
     issue_server_cert_internal(&app_handle, request)
+}
+
+fn generate_pfx_base64_internal(
+    cert_pem: &str,
+    key_pem: &str,
+    ca_cert_pem: &str,
+    common_name: &str,
+    pfx_password: &str,
+) -> AppResult<String> {
+    let password = pfx_password.trim();
+    if password.is_empty() {
+        return Err(AppError::Custom("请设置 PFX/PKCS#12 导出密码。".to_string()));
+    }
+
+    let cert = X509::from_pem(cert_pem.as_bytes())?;
+    let key = PKey::private_key_from_pem(key_pem.as_bytes())?;
+    let ca_cert = X509::from_pem(ca_cert_pem.as_bytes())?;
+
+    let mut ca_stack = Stack::new()?;
+    ca_stack.push(ca_cert)?;
+
+    let mut builder = Pkcs12::builder();
+    builder
+        .name(common_name)
+        .pkey(&key)
+        .cert(&cert)
+        .ca(ca_stack);
+
+    let pkcs12 = builder.build2(password)?;
+    let der = pkcs12.to_der()?;
+
+    Ok(general_purpose::STANDARD.encode(der))
 }
 
 fn generate_nginx_config_internal(domain: &str) -> String {
