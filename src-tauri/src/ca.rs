@@ -169,11 +169,12 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
-        // Windows: 通过 certutil 命令导入
+        // Windows: 通过 certutil 命令导入当前用户受信任区
         let status = Command::new("certutil")
+            .arg("-user")
             .arg("-addstore")
             .arg("-f")
-            .arg("ROOT")
+            .arg("Root")
             .arg(cert_path)
             .status()
             .map_err(|e| AppError::Custom(format!("执行 certutil 命令失败: {}", e)))?;
