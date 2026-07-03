@@ -16,7 +16,7 @@ rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
 x509-parser = "0.16"
 thiserror = "1.0"
 time = { version = "0.3", features = ["formatting", "parsing"] }
-keyring = { version = "3.0", features = ["apple-native", "windows-native"] }
+keyring = { version = "4.1", features = ["apple-native", "windows-native"] }
 rand = "0.8"
 sha2 = "0.10"
 openssl = { version = "0.10", features = ["vendored"] }
