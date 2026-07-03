@@ -1,0 +1,58 @@
+name: Bug 报告
+description: 报告 Cert Studio 的异常行为或回归问题
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请尽量提供可复现的信息。涉及证书、私钥、PFX 密码、Root CA 备份包时，不要上传真实敏感文件。
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 实际发生了什么？和预期行为有什么差异？
+      placeholder: 例如：导入 Root CA 时提示失败，但错误信息不明确。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 写出从打开应用到触发问题的完整步骤。
+      placeholder: |
+        1. 打开 Root CA 页面
+        2. 选择导入证书
+        3. 粘贴 ...
+        4. 点击 ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 你期望应用如何响应？
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本或提交
+      placeholder: 例如：v0.1.0 或 commit hash
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 可粘贴无敏感信息的错误日志、截图或 GitHub Actions 链接。
