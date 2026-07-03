@@ -141,6 +141,71 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
     }
   };
 
+  const promptBackupPassword = (action: string) => {
+    const password = prompt(`${action}\n\n请输入 Root CA 备份包密码。该密码不会保存在应用中，请自行妥善保存。`);
+    if (password === null) {
+      return null;
+    }
+    if (!password.trim()) {
+      alert("备份包密码不能为空。");
+      return null;
+    }
+    return password;
+  };
+
+  const handleExportRootBackup = async () => {
+    const password = promptBackupPassword("导出 Root CA 备份包");
+    if (!password) return;
+
+    if (!confirm("备份包包含 Root CA 证书和私钥。请确认只保存到可信位置，并妥善保管备份包密码。")) {
+      return;
+    }
+
+    try {
+      const dir = await open({
+        directory: true,
+        multiple: false,
+        title: "选择导出 Root CA 备份包的目录"
+      });
+      if (dir && typeof dir === "string") {
+        const backupPath = await invoke<string>("export_root_ca_backup", {
+          outputDir: dir,
+          password,
+        });
+        alert(`Root CA 备份包已导出：\n${backupPath}\n\n请妥善保存备份包和密码。`);
+      }
+    } catch (err) {
+      alert("导出备份包失败: " + err);
+    }
+  };
+
+  const handleImportRootBackup = async () => {
+    const password = promptBackupPassword("恢复 Root CA 备份包");
+    if (!password) return;
+
+    if (hasRootCa && !confirm("恢复备份包会替换当前 Root CA。旧 Root CA 签发的证书可能需要重新确认信任链。是否继续？")) {
+      return;
+    }
+
+    try {
+      const file = await open({
+        multiple: false,
+        filters: [{ name: "Cert Studio Root CA Backup (*.json)", extensions: ["json"] }]
+      });
+      if (file && typeof file === "string") {
+        const info = await invoke<RootCaInfo>("import_root_ca_backup", {
+          backupPath: file,
+          password,
+        });
+        setCaInfo(info);
+        onCaChange();
+        alert("🎉 Root CA 备份包已成功恢复。");
+      }
+    } catch (err) {
+      alert("恢复备份包失败: " + err);
+    }
+  };
+
   // 一键导入并信任根证书
   const handleTrustRootCert = async () => {
     setIsTrusting(true);
@@ -257,6 +322,44 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
             >
               <Download size={16} />
               <span>导出 Root CA 根证书</span>
+            </button>
+
+            <button
+              onClick={handleExportRootBackup}
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-primary)",
+                padding: "10px 20px",
+                borderRadius: "6px",
+                border: "1px solid var(--border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: 500,
+              }}
+            >
+              <Download size={16} />
+              <span>导出 Root CA 备份包</span>
+            </button>
+
+            <button
+              onClick={handleImportRootBackup}
+              style={{
+                background: "var(--bg-card)",
+                color: "var(--text-secondary)",
+                padding: "10px 20px",
+                borderRadius: "6px",
+                border: "1px solid var(--border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "13px",
+                fontWeight: 500,
+              }}
+            >
+              <Upload size={16} />
+              <span>从备份包恢复 Root CA</span>
             </button>
 
             <button
@@ -395,6 +498,23 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
           ) : (
             /* 导入表单 */
             <form onSubmit={handleImportCa} className="glass-panel" style={{ padding: "30px", display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", borderRadius: "8px", padding: "18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+                <div>
+                  <h4 style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)", marginBottom: "4px" }}>从 Cert Studio 备份包恢复</h4>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "12px", lineHeight: 1.5 }}>
+                    适合从另一台可信机器迁移 Root CA。备份包包含根证书和私钥，需要输入导出时设置的密码。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleImportRootBackup}
+                  style={{ background: "var(--primary-theme)", color: "#fff", padding: "10px 18px", borderRadius: "6px", fontSize: "13px", fontWeight: 500, display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <Upload size={16} />
+                  选择备份包恢复
+                </button>
+              </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <label style={{ fontSize: "14px", color: "var(--text-secondary)", fontWeight: 500 }}>

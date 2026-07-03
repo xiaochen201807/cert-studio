@@ -7,7 +7,16 @@ mod ca;
 mod cert;
 mod export;
 
-use ca::{create_root_ca, import_root_ca, get_root_ca_info, has_valid_root_ca, read_text_file, import_system_trust};
+use ca::{
+    create_root_ca,
+    export_root_ca_backup,
+    get_root_ca_info,
+    has_valid_root_ca,
+    import_root_ca,
+    import_root_ca_backup,
+    import_system_trust,
+    read_text_file,
+};
 use cert::issue_server_cert;
 use export::{export_cert_bundle, export_root_ca_cert};
 
@@ -27,6 +36,8 @@ fn main() {
             get_root_ca_info,
             has_valid_root_ca,
             read_text_file,
+            export_root_ca_backup,
+            import_root_ca_backup,
             issue_server_cert,
             export_cert_bundle,
             export_root_ca_cert,
