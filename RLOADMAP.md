@@ -398,6 +398,115 @@ jobs:
 
 ---
 
+### Phase 7：GitHub Projects 项目管理
+
+目标：
+
+```txt
+用 GitHub Projects 管理 Cert Studio 后续功能、缺陷、发布任务和文档任务。
+Projects 只负责计划、优先级、状态流转和进度可视化；具体代码实现仍通过 Issue、PR、Actions 和 Agents 完成。
+```
+
+建议创建 Project：
+
+```txt
+名称：Cert Studio Roadmap
+视图 1：Roadmap（Table）
+视图 2：Kanban（Board）
+视图 3：Release Planning（Table，按 Milestone/Version 分组）
+```
+
+建议字段：
+
+```txt
+Status: Backlog / Ready / In Progress / In Review / Done / Blocked
+Priority: P0 / P1 / P2 / P3
+Type: Feature / Bug / Tech Debt / Docs / Release / Security
+Area: Root CA / Certificate Issuing / Storage / Trust Install / UI / CI / Docs
+Version: v0.1.x / v0.2.x / v1.0
+Owner: 负责人
+Size: S / M / L
+```
+
+建议自动化：
+
+```txt
+新 Issue 自动进入 Backlog
+Issue 被分配负责人后进入 Ready
+PR 关联 Issue 后进入 In Progress
+PR ready for review 后进入 In Review
+PR merge 后进入 Done
+打上 blocked label 后进入 Blocked
+```
+
+首批建议 Issue：
+
+```txt
+[Feature][P1] 支持 PFX/PKCS#12 导出
+[Feature][P1] Root CA 备份与迁移向导
+[Feature][P2] Root CA 删除/重置流程增加二次确认与影响说明
+[Feature][P2] Linux 信任安装适配更多发行版
+[Security][P1] 本地回退私钥存储从 XOR 混淆升级为平台安全加密方案
+[Security][P2] 导出 server.key 时增加风险提示
+[Bug][P2] 导入 Root CA 时补充更明确的证书/私钥不匹配错误提示
+[Tech Debt][P2] 为 ca.rs/cert.rs/storage.rs 增加 Rust 单元测试
+[Tech Debt][P2] 为前端表单校验抽取可测试工具函数
+[Docs][P2] README 同步 Wiki 快速开始和安全边界说明
+[Release][P1] 发布流程增加 release notes 自动生成
+[Release][P2] Actions 构建后自动创建 GitHub Release 并挂载安装包
+```
+
+Issue 模板建议：
+
+```md
+## 背景
+
+说明为什么需要这个任务。
+
+## 目标
+
+- 目标 1
+- 目标 2
+
+## 验收标准
+
+- [ ] 可以复现或验证目标行为
+- [ ] 相关文档已更新
+- [ ] 本地或 CI 构建通过
+
+## 影响范围
+
+涉及模块、页面、命令或发布流程。
+```
+
+Agents 使用方式：
+
+```txt
+适合交给 Agents 的任务：
+- 范围清楚、验收标准明确的单个 Issue
+- 有明确模块边界的 bugfix
+- 测试补充、文档同步、依赖升级
+
+不适合直接交给 Agents 的任务：
+- 安全策略未定的 Root CA 私钥方案
+- UI/交互目标不清晰的大改版
+- 需要人工决定兼容范围的发布策略
+```
+
+推荐工作流：
+
+```txt
+1. 在 Project 中创建或挑选 Issue
+2. 补齐背景、目标、验收标准和影响范围
+3. 将 Issue 状态移动到 Ready
+4. 指派给开发者或交给 Agents 实现
+5. Agent 或开发者提交 PR
+6. PR 关联 Issue，Actions 构建通过
+7. Review 通过后合并，Issue 自动进入 Done
+```
+
+---
+
 ## Codex Code 初始提示词
 
 可以直接用：
