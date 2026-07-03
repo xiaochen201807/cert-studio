@@ -5,6 +5,9 @@ on:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -78,3 +81,42 @@ jobs:
             src-tauri/target/aarch64-pc-windows-msvc/release/bundle/**
             src-tauri/target/release/cert-studio
             src-tauri/target/release/cert-studio.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: package release assets
+        run: |
+          mkdir -p release-assets
+
+          while IFS= read -r -d '' artifact_dir; do
+            artifact_name="$(basename "$artifact_dir")"
+            (
+              cd "$artifact_dir"
+              zip -r "$GITHUB_WORKSPACE/release-assets/${artifact_name}.zip" .
+            )
+          done < <(find release-artifacts -mindepth 1 -maxdepth 1 -type d -print0)
+
+          ls -lh release-assets
+
+      - name: create github release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release-assets/*.zip --clobber
+          else
+            gh release create "$tag" release-assets/*.zip \
+              --title "$tag" \
+              --notes "Automated release for $tag." \
+              --verify-tag
+          fi
