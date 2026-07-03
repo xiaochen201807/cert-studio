@@ -135,6 +135,7 @@ jobs:
       - name: create github release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
           tag="${RELEASE_TAG}"
 
