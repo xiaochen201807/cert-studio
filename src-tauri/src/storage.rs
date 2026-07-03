@@ -224,3 +224,43 @@ pub fn has_root_ca(app_handle: &AppHandle) -> bool {
 
     has_keyring || has_local_key
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn local_storage_encryption_roundtrips_private_key_text() {
+        let storage_key = [7u8; LOCAL_KEY_LEN];
+        let key_pem = "-----BEGIN PRIVATE KEY-----\nlocal-key\n-----END PRIVATE KEY-----";
+
+        let encrypted = encrypt_root_ca_key_for_local_storage(key_pem, &storage_key).unwrap();
+        let decrypted = decrypt_root_ca_key_from_local_storage(&encrypted, &storage_key).unwrap();
+
+        assert_eq!(decrypted, key_pem);
+        assert!(encrypted.starts_with(LOCAL_KEY_FILE_MAGIC));
+        assert_ne!(encrypted, key_pem.as_bytes());
+    }
+
+    #[test]
+    fn local_storage_decryption_keeps_legacy_xor_compatibility() {
+        let storage_key = [11u8; LOCAL_KEY_LEN];
+        let key_pem = "legacy-private-key";
+        let legacy_encrypted = xor_encrypt_decrypt(key_pem.as_bytes(), &storage_key);
+
+        let decrypted = decrypt_root_ca_key_from_local_storage(&legacy_encrypted, &storage_key).unwrap();
+
+        assert_eq!(decrypted, key_pem);
+    }
+
+    #[test]
+    fn local_storage_decryption_rejects_truncated_aes_payload() {
+        let storage_key = [13u8; LOCAL_KEY_LEN];
+        let truncated = LOCAL_KEY_FILE_MAGIC.to_vec();
+
+        let err = decrypt_root_ca_key_from_local_storage(&truncated, &storage_key)
+            .expect_err("truncated AES payload should fail");
+
+        assert!(err.to_string().contains("密文格式不完整"));
+    }
+}

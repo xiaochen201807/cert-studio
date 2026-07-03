@@ -4,7 +4,9 @@ use base64::{engine::general_purpose, Engine as _};
 use openssl::{
     hash::MessageDigest,
     pkcs5::pbkdf2_hmac,
+    pkey::PKey,
     symm::{decrypt_aead, encrypt_aead, Cipher},
+    x509::X509,
 };
 use rcgen::{CertificateParams, KeyPair, DistinguishedName, DnType, IsCa, KeyUsagePurpose, BasicConstraints};
 use ::time::{OffsetDateTime, Duration};
@@ -128,26 +130,36 @@ pub fn import_root_ca(
     cert_pem: String,
     key_pem: String,
 ) -> AppResult<RootCaInfo> {
-    // 1. 验证证书和私钥是否有效
-    // 验证私钥
-    let key_pair = KeyPair::from_pem(&key_pem)
-        .map_err(|e| AppError::Custom(format!("私钥 PEM 解析失败: {}", e)))?;
-    
-    // 验证证书并解析
-    let info = parse_cert_info(&cert_pem)?;
-    
-    // 用 rcgen 加载 CA 证书参数并自签校验是否与私钥匹配
-    let ca_params = CertificateParams::from_ca_cert_pem(&cert_pem)
-        .map_err(|e| AppError::Custom(format!("从证书 PEM 提取参数失败: {}", e)))?;
-    
-    if ca_params.self_signed(&key_pair).is_err() {
-        return Err(AppError::Custom("根证书与私钥不匹配，请检查私钥是否正确。".to_string()));
-    }
-    
+    let info = validate_import_root_ca_pems(&cert_pem, &key_pem)?;
+
     // 2. 保存
     storage::save_root_ca_cert(&app_handle, &cert_pem)?;
     storage::save_root_ca_key(&app_handle, &key_pem)?;
     
+    Ok(info)
+}
+
+fn validate_import_root_ca_pems(cert_pem: &str, key_pem: &str) -> AppResult<RootCaInfo> {
+    let cert = X509::from_pem(cert_pem.as_bytes())
+        .map_err(|e| AppError::Custom(format!("Root CA 证书 PEM 解析失败: {}", e)))?;
+    let key = PKey::private_key_from_pem(key_pem.as_bytes())
+        .map_err(|e| AppError::Custom(format!("Root CA 私钥 PEM 解析失败: {}", e)))?;
+    let cert_public_key = cert
+        .public_key()
+        .map_err(|e| AppError::Custom(format!("无法读取 Root CA 证书公钥: {}", e)))?;
+    if !cert_public_key.public_eq(&key) {
+        return Err(AppError::Custom(
+            "Root CA 证书与私钥不匹配，请确认选择的是同一套证书和私钥。".to_string(),
+        ));
+    }
+
+    KeyPair::from_pem(key_pem)
+        .map_err(|e| AppError::Custom(format!("Root CA 私钥不是 rcgen 支持的 PEM 格式: {}", e)))?;
+
+    let info = parse_cert_info(cert_pem)?;
+    CertificateParams::from_ca_cert_pem(cert_pem)
+        .map_err(|e| AppError::Custom(format!("Root CA 证书不是有效的 CA 证书或不受当前解析器支持: {}", e)))?;
+
     Ok(info)
 }
 
@@ -337,22 +349,38 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
     #[cfg(target_os = "linux")]
     {
         use std::process::Command;
-        // Linux (以 Debian/Ubuntu 为例): 复制到 /usr/local/share/ca-certificates 并 update-ca-certificates
-        // 这需要 pkexec 获取 root 权限
-        let cert_dest = std::path::Path::new("/usr/local/share/ca-certificates/cert-studio-root-ca.crt");
-        
-        let script = format!(
-            "cp '{}' '{}' && update-ca-certificates",
-            cert_path.to_string_lossy(),
-            cert_dest.to_string_lossy()
-        );
-        
-        let status = Command::new("pkexec")
+
+        let script = r#"
+set -e
+src="$1"
+if command -v update-ca-certificates >/dev/null 2>&1; then
+  install -m 0644 "$src" /usr/local/share/ca-certificates/cert-studio-root-ca.crt
+  update-ca-certificates
+elif command -v update-ca-trust >/dev/null 2>&1; then
+  install -D -m 0644 "$src" /etc/pki/ca-trust/source/anchors/cert-studio-root-ca.crt
+  update-ca-trust extract
+elif command -v trust >/dev/null 2>&1; then
+  trust anchor --store "$src"
+else
+  echo "未找到支持的 Linux 根证书信任更新工具：update-ca-certificates、update-ca-trust 或 trust" >&2
+  exit 2
+fi
+"#;
+
+        let mut command = if Command::new("pkexec").arg("--version").output().is_ok() {
+            Command::new("pkexec")
+        } else {
+            Command::new("sudo")
+        };
+
+        let status = command
             .arg("sh")
             .arg("-c")
             .arg(script)
+            .arg("cert-studio-trust-import")
+            .arg(cert_path)
             .status()
-            .map_err(|e| AppError::Custom(format!("执行 pkexec 授权失败: {}", e)))?;
+            .map_err(|e| AppError::Custom(format!("执行 Linux 授权导入命令失败: {}", e)))?;
             
         if !status.success() {
             return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
@@ -360,4 +388,98 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_ca_pair(common_name: &str) -> AppResult<(String, String)> {
+        let key_pair = KeyPair::generate()?;
+        let mut params = CertificateParams::default();
+        params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        params.key_usages = vec![
+            KeyUsagePurpose::KeyCertSign,
+            KeyUsagePurpose::CrlSign,
+        ];
+
+        let mut dn = DistinguishedName::new();
+        dn.push(DnType::CommonName, common_name);
+        params.distinguished_name = dn;
+
+        let cert = params.self_signed(&key_pair)?;
+        Ok((cert.pem(), key_pair.serialize_pem()))
+    }
+
+    #[test]
+    fn import_validation_accepts_matching_ca_pair() {
+        let (cert_pem, key_pem) = sample_ca_pair("Test Root CA").unwrap();
+
+        let info = validate_import_root_ca_pems(&cert_pem, &key_pem).unwrap();
+
+        assert!(info.subject.contains("Test Root CA"));
+        assert_eq!(info.sha256_fingerprint.len(), 95);
+    }
+
+    #[test]
+    fn import_validation_rejects_mismatched_key() {
+        let (cert_pem, _) = sample_ca_pair("Test Root CA").unwrap();
+        let (_, other_key_pem) = sample_ca_pair("Other Root CA").unwrap();
+
+        let err = validate_import_root_ca_pems(&cert_pem, &other_key_pem)
+            .expect_err("mismatched key should fail");
+
+        assert!(err.to_string().contains("证书与私钥不匹配"));
+    }
+
+    #[test]
+    fn import_validation_reports_malformed_cert_pem() {
+        let (_, key_pem) = sample_ca_pair("Test Root CA").unwrap();
+
+        let err = validate_import_root_ca_pems("not a pem", &key_pem)
+            .expect_err("malformed cert should fail");
+
+        assert!(err.to_string().contains("Root CA 证书 PEM 解析失败"));
+    }
+
+    #[test]
+    fn backup_encrypt_decrypt_roundtrips_payload() {
+        let payload = RootCaBackupPayload {
+            cert_pem: "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----".to_string(),
+            key_pem: "-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----".to_string(),
+        };
+
+        let backup = encrypt_root_ca_backup(&payload, "strong-password").unwrap();
+        let restored = decrypt_root_ca_backup(&backup, "strong-password").unwrap();
+
+        assert_eq!(restored.cert_pem, payload.cert_pem);
+        assert_eq!(restored.key_pem, payload.key_pem);
+        assert_eq!(backup.version, ROOT_CA_BACKUP_VERSION);
+        assert_eq!(backup.kdf, "PBKDF2-HMAC-SHA256");
+        assert_eq!(backup.cipher, "AES-256-GCM");
+    }
+
+    #[test]
+    fn backup_decrypt_rejects_wrong_password() {
+        let payload = RootCaBackupPayload {
+            cert_pem: "cert".to_string(),
+            key_pem: "key".to_string(),
+        };
+        let backup = encrypt_root_ca_backup(&payload, "correct-password").unwrap();
+
+        let err = decrypt_root_ca_backup(&backup, "wrong-password")
+            .expect_err("wrong password should fail");
+
+        assert!(err.to_string().contains("密码错误或文件已损坏"));
+    }
+
+    #[test]
+    fn derive_backup_key_rejects_empty_password() {
+        let salt = [0u8; ROOT_CA_BACKUP_SALT_LEN];
+
+        let err = derive_backup_key("   ", &salt, ROOT_CA_BACKUP_ITERATIONS)
+            .expect_err("empty password should fail");
+
+        assert!(err.to_string().contains("请设置 Root CA 备份包密码"));
+    }
 }

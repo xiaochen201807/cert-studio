@@ -206,6 +206,22 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
     }
   };
 
+  const handleResetRootCa = () => {
+    const firstConfirm = confirm(
+      "重新初始化会替换当前 Root CA。旧 Root CA 签发的服务端证书将不再被新的 Root CA 信任，客户端也需要重新安装新的根证书。是否继续？"
+    );
+    if (!firstConfirm) return;
+
+    const typed = prompt("请再次确认。输入“重新初始化”后才会进入创建/导入流程。");
+    if (typed !== "重新初始化") {
+      alert("未输入确认文本，已取消重新初始化。");
+      return;
+    }
+
+    onCaChange();
+    setCaInfo(null);
+  };
+
   // 一键导入并信任根证书
   const handleTrustRootCert = async () => {
     setIsTrusting(true);
@@ -363,12 +379,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
             </button>
 
             <button
-              onClick={() => {
-                if (confirm("⚠️ 确定要重新生成或替换当前的 Root CA 吗？警告：重新生成会导致之前已发行的子证书全部失效，您必须重新下载和安装根证书。")) {
-                  onCaChange(); // 强制刷新状态
-                  setCaInfo(null);
-                }
-              }}
+              onClick={handleResetRootCa}
               style={{
                 background: "var(--bg-card)",
                 color: "var(--text-secondary)",

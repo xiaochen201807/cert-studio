@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { FileSpreadsheet, ShieldAlert, ChevronDown, ChevronUp, Download, Eye, Terminal, Code } from "lucide-react";
+import { validateCertificateRequest } from "../utils/certValidation";
 
 interface IssueCertProps {
   hasRootCa: boolean;
@@ -43,35 +44,14 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
   const handleIssue = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 校验常用名称
-    const trimmedCn = cn.trim();
-    if (trimmedCn.includes(",") || trimmedCn.includes("，")) {
-      alert("常用名称 (Common Name) 只能填写一个，不能包含逗号！");
-      return;
-    }
-    if (trimmedCn.includes("*")) {
-      alert("常用名称 (Common Name) 不支持通配符！");
-      return;
-    }
-
-    // 解析 DNS Names 与 IP 地址
-    const dnsNames = dnsInput
-      .split(",")
-      .map((d) => d.trim())
-      .filter((d) => d.length > 0);
-
-    const ipAddresses = ipInput
-      .split(",")
-      .map((ip: string) => ip.trim())
-      .filter((ip) => ip.length > 0);
-
-    // 校验 IP 地址是否包含通配符
-    if (ipAddresses.some((ip: string) => ip.includes("*"))) {
-      alert("IP 使用者备用名称 (IP SANs) 不支持通配符！");
-      return;
-    }
-    if (!pfxPassword.trim()) {
-      alert("请设置 PFX/PKCS#12 导出密码，用于保护 server.pfx 中的私钥。");
+    const validation = validateCertificateRequest({
+      commonName: cn,
+      dnsInput,
+      ipInput,
+      pfxPassword,
+    });
+    if (validation.error) {
+      alert(validation.error);
       return;
     }
 
@@ -81,16 +61,16 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
     try {
       const res = await invoke<CertBundle>("issue_server_cert", {
         request: {
-          common_name: cn,
-          dns_names: dnsNames,
-          ip_addresses: ipAddresses,
+          common_name: validation.commonName,
+          dns_names: validation.dnsNames,
+          ip_addresses: validation.ipAddresses,
           days: days,
           organization: org || null,
           organizational_unit: ou || null,
           country: country || null,
           state: state || null,
           locality: locality || null,
-          pfx_password: pfxPassword,
+          pfx_password: validation.pfxPassword,
         },
       });
       setBundle(res);
@@ -105,6 +85,9 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
   // 一键选择路径导出 Bundle
   const handleExportBundle = async () => {
     if (!bundle) return;
+    if (!confirm("导出目录会包含 server.key 服务端私钥。请确认只保存到受控位置，不要提交到 Git、上传公共制品库或通过聊天工具传播。")) {
+      return;
+    }
     try {
       const dir = await open({
         directory: true,
