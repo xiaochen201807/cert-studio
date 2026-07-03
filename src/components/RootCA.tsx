@@ -290,14 +290,14 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
               为了让您本地的 Chrome/Edge 等浏览器在访问自签 HTTPS 网站时不报错，您必须先通过上面的按钮导出根证书（`company-root-ca.crt`），并将其安装进系统受信任根证书存储区：
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div style={{ fontSize: "11px", background: "#09090b", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                <span style={{ color: "#818cf8", fontWeight: 600 }}>Windows (管理员权限 PowerShell)</span>
+              <div style={{ fontSize: "11px", background: "var(--code-bg)", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                <span style={{ color: "#818cf8", fontWeight: 600 }}>Windows (PowerShell / CMD)</span>
                 <code style={{ display: "block", marginTop: "4px", fontFamily: "monospace" }}>
-                  certutil -addstore -f "Root" company-root-ca.crt
+                  certutil -user -addstore -f "Root" company-root-ca.crt
                 </code>
               </div>
-              <div style={{ fontSize: "11px", background: "#09090b", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
-                <span style={{ color: "var(--accent-success)", fontWeight: 600 }}>macOS (管理员权限 Terminal)</span>
+              <div style={{ fontSize: "11px", background: "var(--code-bg)", padding: "10px", borderRadius: "6px", border: "1px solid var(--border-subtle)" }}>
+                <span style={{ color: "var(--accent-success)", fontWeight: 600 }}>macOS (Terminal)</span>
                 <code style={{ display: "block", marginTop: "4px", fontFamily: "monospace" }}>
                   sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain company-root-ca.crt
                 </code>
