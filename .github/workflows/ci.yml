@@ -34,6 +34,9 @@ jobs:
       - name: build frontend
         run: npm run build
 
+      - name: run frontend tests
+        run: npm test
+
       - name: upload frontend artifact
         uses: actions/upload-artifact@v7
         with:
@@ -43,18 +46,22 @@ jobs:
           retention-days: 7
 
   rust-tests:
-    name: rust-tests
-    runs-on: ubuntu-latest
+    name: rust-tests-${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: actions/setup-node@v6
         with:
-          node-version: 22
-          cache: npm
+          components: clippy
 
       - uses: actions/cache@v6
         with:
@@ -62,33 +69,32 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: cargo-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          key: cargo-test-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.toml', 'src-tauri/Cargo.lock') }}
           restore-keys: |
-            cargo-${{ runner.os }}-
+            cargo-test-${{ runner.os }}-
 
       - name: install tauri dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
 
-      - name: install node dependencies
-        run: npm ci
-
-      - name: generate tauri icons
-        run: npx tauri icon ./src/assets/logo.png
+      - name: run rust clippy
+        if: runner.os == 'Linux'
+        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
       - name: run rust tests
         shell: bash
         run: |
           set -o pipefail
           mkdir -p src-tauri/target/ci
-          cargo test --manifest-path src-tauri/Cargo.toml 2>&1 | tee src-tauri/target/ci/cargo-test.log
+          cargo test --locked --manifest-path src-tauri/Cargo.toml 2>&1 | tee src-tauri/target/ci/cargo-test.log
 
       - name: upload rust test log
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cargo-test-log
+          name: cargo-test-log-${{ runner.os }}
           path: src-tauri/target/ci/cargo-test.log
           if-no-files-found: ignore
           retention-days: 7

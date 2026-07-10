@@ -1,23 +1,18 @@
 // Prevents additional console window on Windows in release, do not remove.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod error;
-mod storage;
 mod ca;
 mod cert;
+mod error;
 mod export;
+mod fs_utils;
+mod storage;
 
 use ca::{
-    create_root_ca,
-    export_root_ca_backup,
-    get_root_ca_info,
-    has_valid_root_ca,
-    import_root_ca,
-    import_root_ca_backup,
-    import_system_trust,
-    read_text_file,
+    create_root_ca, export_root_ca_backup, get_root_ca_info, has_valid_root_ca, import_root_ca,
+    import_root_ca_backup, import_system_trust,
 };
-use cert::issue_server_cert;
+use cert::{issue_server_cert, CertBundleStore};
 use export::{export_cert_bundle, export_root_ca_cert};
 
 #[tauri::command]
@@ -27,6 +22,7 @@ fn greet(name: &str) -> String {
 
 fn main() {
     tauri::Builder::default()
+        .manage(CertBundleStore::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
@@ -35,7 +31,6 @@ fn main() {
             import_root_ca,
             get_root_ca_info,
             has_valid_root_ca,
-            read_text_file,
             export_root_ca_backup,
             import_root_ca_backup,
             issue_server_cert,

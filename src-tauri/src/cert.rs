@@ -2,13 +2,15 @@ use crate::error::{AppError, AppResult};
 use crate::storage;
 use base64::{engine::general_purpose, Engine as _};
 use openssl::{pkcs12::Pkcs12, pkey::PKey, stack::Stack, x509::X509};
-use rcgen::{
-    CertificateParams, KeyPair, DistinguishedName, DnType, SanType, IsCa,
-    KeyUsagePurpose, ExtendedKeyUsagePurpose,
-};
 use rcgen::Ia5String;
-use time::{OffsetDateTime, Duration};
+use rcgen::{
+    CertificateParams, DistinguishedName, DnType, ExtendedKeyUsagePurpose, IsCa, KeyPair,
+    KeyUsagePurpose, SanType,
+};
+use std::collections::HashMap;
 use std::net::IpAddr;
+use std::sync::Mutex;
+use time::{Duration, OffsetDateTime};
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct IssueCertRequest {
@@ -24,7 +26,7 @@ pub struct IssueCertRequest {
     pub pfx_password: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct CertBundle {
     pub cert_pem: String,
     pub key_pem: String,
@@ -34,21 +36,186 @@ pub struct CertBundle {
     pub electron_readme: String,
 }
 
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct CertBundlePreview {
+    pub bundle_id: String,
+    pub cert_pem: String,
+    pub nginx_config: String,
+    pub electron_readme: String,
+}
+
+#[derive(Default)]
+pub struct CertBundleStore {
+    bundles: Mutex<HashMap<String, CertBundle>>,
+}
+
+impl CertBundleStore {
+    fn insert(&self, bundle: CertBundle) -> AppResult<CertBundlePreview> {
+        use rand::RngCore;
+
+        let mut id_bytes = [0u8; 16];
+        rand::thread_rng().fill_bytes(&mut id_bytes);
+        let bundle_id = id_bytes
+            .iter()
+            .map(|byte| format!("{:02x}", byte))
+            .collect::<String>();
+        let preview = CertBundlePreview {
+            bundle_id: bundle_id.clone(),
+            cert_pem: bundle.cert_pem.clone(),
+            nginx_config: bundle.nginx_config.clone(),
+            electron_readme: bundle.electron_readme.clone(),
+        };
+
+        let mut bundles = self
+            .bundles
+            .lock()
+            .map_err(|_| AppError::Custom("证书导出缓存不可用。".to_string()))?;
+        bundles.clear();
+        bundles.insert(bundle_id, bundle);
+        Ok(preview)
+    }
+
+    pub fn get(&self, bundle_id: &str) -> AppResult<CertBundle> {
+        let bundles = self
+            .bundles
+            .lock()
+            .map_err(|_| AppError::Custom("证书导出缓存不可用。".to_string()))?;
+        bundles
+            .get(bundle_id)
+            .cloned()
+            .ok_or_else(|| AppError::Custom("证书导出会话已失效，请重新签发。".to_string()))
+    }
+}
+
+fn normalize_optional(value: Option<String>) -> Option<String> {
+    value
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+fn is_valid_dns_name(value: &str, allow_wildcard: bool) -> bool {
+    let value = if allow_wildcard {
+        value.strip_prefix("*.").unwrap_or(value)
+    } else {
+        value
+    };
+
+    if value.is_empty() || value.len() > 253 || !value.is_ascii() || value.ends_with('.') {
+        return false;
+    }
+
+    value.split('.').all(|label| {
+        !label.is_empty()
+            && label.len() <= 63
+            && !label.starts_with('-')
+            && !label.ends_with('-')
+            && label
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    })
+}
+
+fn validate_and_normalize_request(mut request: IssueCertRequest) -> AppResult<IssueCertRequest> {
+    request.common_name = request.common_name.trim().to_ascii_lowercase();
+    request.pfx_password = request.pfx_password.trim().to_string();
+    request.dns_names = request
+        .dns_names
+        .into_iter()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty())
+        .collect();
+    request.ip_addresses = request
+        .ip_addresses
+        .into_iter()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .collect();
+    request.organization = normalize_optional(request.organization);
+    request.organizational_unit = normalize_optional(request.organizational_unit);
+    request.country = normalize_optional(request.country).map(|value| value.to_ascii_uppercase());
+    request.state = normalize_optional(request.state);
+    request.locality = normalize_optional(request.locality);
+
+    if !is_valid_dns_name(&request.common_name, false) {
+        return Err(AppError::Custom(
+            "Common Name 必须是有效且不含通配符的 DNS 名称。".to_string(),
+        ));
+    }
+    if request.dns_names.is_empty()
+        || request
+            .dns_names
+            .iter()
+            .any(|name| !is_valid_dns_name(name, true))
+    {
+        return Err(AppError::Custom("请提供有效的 DNS SAN 名称。".to_string()));
+    }
+    if !request
+        .dns_names
+        .iter()
+        .any(|name| name == &request.common_name)
+    {
+        return Err(AppError::Custom(
+            "Common Name 必须同时包含在 DNS SAN 中。".to_string(),
+        ));
+    }
+    for ip in &request.ip_addresses {
+        ip.parse::<IpAddr>()
+            .map_err(|_| AppError::Custom(format!("非法的 IP 地址 '{}'", ip)))?;
+    }
+    if !(1..=825).contains(&request.days) {
+        return Err(AppError::Custom(
+            "服务端证书有效期必须在 1 到 825 天之间。".to_string(),
+        ));
+    }
+    if request.pfx_password.chars().count() < 8 {
+        return Err(AppError::Custom(
+            "PFX/PKCS#12 密码至少需要 8 个字符。".to_string(),
+        ));
+    }
+    if let Some(country) = &request.country {
+        if country.len() != 2 || !country.bytes().all(|byte| byte.is_ascii_alphabetic()) {
+            return Err(AppError::Custom("国家代码必须是两个英文字母。".to_string()));
+        }
+    }
+
+    Ok(request)
+}
+
 pub fn issue_server_cert_internal(
     app_handle: &tauri::AppHandle,
     request: IssueCertRequest,
 ) -> AppResult<CertBundle> {
-    // 1. 读取 CA 证书和私钥
     let ca_cert_pem = storage::get_root_ca_cert(app_handle)?;
     let ca_key_pem = storage::get_root_ca_key(app_handle)?;
+    issue_server_cert_with_material(&ca_cert_pem, &ca_key_pem, request)
+}
 
-    let ca_params = CertificateParams::from_ca_cert_pem(&ca_cert_pem)?;
-    let ca_key_pair = KeyPair::from_pem(&ca_key_pem)?;
+fn issue_server_cert_with_material(
+    ca_cert_pem: &str,
+    ca_key_pem: &str,
+    request: IssueCertRequest,
+) -> AppResult<CertBundle> {
+    let request = validate_and_normalize_request(request)?;
+    crate::ca::validate_import_root_ca_pems(ca_cert_pem, ca_key_pem)?;
+
+    let ca_params = CertificateParams::from_ca_cert_pem(ca_cert_pem)?;
+    let now = OffsetDateTime::now_utc();
+    let requested_not_after = now + Duration::days(request.days as i64);
+    if requested_not_after > ca_params.not_after {
+        return Err(AppError::Custom(
+            "服务端证书有效期不能超过 Root CA 的到期时间。".to_string(),
+        ));
+    }
+    let ca_key_pair = KeyPair::from_pem(ca_key_pem)?;
     let ca_cert = ca_params.self_signed(&ca_key_pair)?;
 
     // 2. 构造子证书参数
     // 在 rcgen 中使用首个 dns name 作为基础构建 params，如果没有则使用 CN 构建
-    let primary_dns = request.dns_names.first().cloned().unwrap_or_else(|| request.common_name.clone());
+    let primary_dns = request
+        .dns_names
+        .first()
+        .cloned()
+        .unwrap_or_else(|| request.common_name.clone());
     let mut params = CertificateParams::new(vec![primary_dns])?;
 
     // 组装 Subject Alternative Names
@@ -59,7 +226,8 @@ pub fn issue_server_cert_internal(
         subject_alt_names.push(SanType::DnsName(ia5));
     }
     for ip in &request.ip_addresses {
-        let ip_addr: IpAddr = ip.parse()
+        let ip_addr: IpAddr = ip
+            .parse()
             .map_err(|_| AppError::Custom(format!("非法的 IP 地址 '{}'", ip)))?;
         subject_alt_names.push(SanType::IpAddress(ip_addr));
     }
@@ -86,18 +254,14 @@ pub fn issue_server_cert_internal(
     params.distinguished_name = dn;
 
     // 设定有效期与密钥用途
-    let now = OffsetDateTime::now_utc();
     params.not_before = now;
-    params.not_after = now + Duration::days(request.days as i64);
+    params.not_after = requested_not_after;
     params.is_ca = IsCa::NoCa;
     params.key_usages = vec![
         KeyUsagePurpose::DigitalSignature,
         KeyUsagePurpose::KeyEncipherment,
     ];
-    params.extended_key_usages = vec![
-        ExtendedKeyUsagePurpose::ServerAuth,
-        ExtendedKeyUsagePurpose::ClientAuth,
-    ];
+    params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
 
     // 生成子证书密钥对并用 CA 签名
     let server_key_pair = KeyPair::generate()?;
@@ -113,7 +277,7 @@ pub fn issue_server_cert_internal(
     let pfx_base64 = generate_pfx_base64_internal(
         &cert_pem,
         &key_pem,
-        &ca_cert_pem,
+        ca_cert_pem,
         &request.common_name,
         &request.pfx_password,
     )?;
@@ -137,9 +301,11 @@ pub fn issue_server_cert_internal(
 #[tauri::command]
 pub fn issue_server_cert(
     app_handle: tauri::AppHandle,
+    store: tauri::State<'_, CertBundleStore>,
     request: IssueCertRequest,
-) -> AppResult<CertBundle> {
-    issue_server_cert_internal(&app_handle, request)
+) -> AppResult<CertBundlePreview> {
+    let bundle = issue_server_cert_internal(&app_handle, request)?;
+    store.insert(bundle)
 }
 
 fn generate_pfx_base64_internal(
@@ -151,7 +317,9 @@ fn generate_pfx_base64_internal(
 ) -> AppResult<String> {
     let password = pfx_password.trim();
     if password.is_empty() {
-        return Err(AppError::Custom("请设置 PFX/PKCS#12 导出密码。".to_string()));
+        return Err(AppError::Custom(
+            "请设置 PFX/PKCS#12 导出密码。".to_string(),
+        ));
     }
 
     let cert = X509::from_pem(cert_pem.as_bytes())?;
@@ -254,6 +422,10 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 #[cfg(test)]
 mod tests {
     use super::*;
+    use openssl::stack::Stack as OpenSslStack;
+    use openssl::x509::store::X509StoreBuilder;
+    use openssl::x509::X509StoreContext;
+    use rcgen::{BasicConstraints, CertificateParams, IsCa};
 
     #[test]
     fn nginx_config_uses_requested_domain_and_expected_files() {
@@ -279,5 +451,80 @@ mod tests {
             .expect_err("empty PFX password should fail");
 
         assert!(err.to_string().contains("请设置 PFX/PKCS#12 导出密码"));
+    }
+
+    fn valid_request() -> IssueCertRequest {
+        IssueCertRequest {
+            common_name: "api.internal.example.com".to_string(),
+            dns_names: vec!["api.internal.example.com".to_string()],
+            ip_addresses: vec!["127.0.0.1".to_string()],
+            days: 365,
+            organization: None,
+            organizational_unit: None,
+            country: Some("CN".to_string()),
+            state: None,
+            locality: None,
+            pfx_password: "strong-password".to_string(),
+        }
+    }
+
+    #[test]
+    fn request_validation_rejects_nginx_directive_in_common_name() {
+        let mut request = valid_request();
+        request.common_name = "example.com; include /tmp/file".to_string();
+        let err = validate_and_normalize_request(request).expect_err("injection should fail");
+        assert!(err.to_string().contains("Common Name"));
+    }
+
+    #[test]
+    fn request_validation_requires_common_name_in_sans() {
+        let mut request = valid_request();
+        request.dns_names = vec!["other.example.com".to_string()];
+        let err = validate_and_normalize_request(request).expect_err("missing SAN should fail");
+        assert!(err.to_string().contains("DNS SAN"));
+    }
+
+    #[test]
+    fn request_validation_rejects_short_pfx_password() {
+        let mut request = valid_request();
+        request.pfx_password = "short".to_string();
+        let err = validate_and_normalize_request(request).expect_err("short password should fail");
+        assert!(err.to_string().contains("至少需要 8 个字符"));
+    }
+
+    #[test]
+    fn issued_certificate_verifies_against_original_root_ca() {
+        let ca_key = KeyPair::generate().unwrap();
+        let mut ca_params = CertificateParams::default();
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        ca_params.not_before = OffsetDateTime::now_utc() - Duration::days(1);
+        ca_params.not_after = OffsetDateTime::now_utc() + Duration::days(3650);
+        let ca_cert = ca_params.self_signed(&ca_key).unwrap();
+        let ca_cert_pem = ca_cert.pem();
+        let ca_key_pem = ca_key.serialize_pem();
+
+        let bundle = issue_server_cert_with_material(&ca_cert_pem, &ca_key_pem, valid_request())
+            .expect("certificate issuance should succeed");
+
+        let leaf = X509::from_pem(bundle.cert_pem.as_bytes()).unwrap();
+        let root = X509::from_pem(ca_cert_pem.as_bytes()).unwrap();
+        let mut store_builder = X509StoreBuilder::new().unwrap();
+        store_builder.add_cert(root).unwrap();
+        let store = store_builder.build();
+        let chain = OpenSslStack::new().unwrap();
+        let mut context = X509StoreContext::new().unwrap();
+
+        let verified = context
+            .init(&store, &leaf, &chain, |context| context.verify_cert())
+            .unwrap();
+        assert!(verified);
+
+        let sans = leaf.subject_alt_names().unwrap();
+        assert!(sans
+            .iter()
+            .any(|name| name.dnsname() == Some("api.internal.example.com")));
+        assert!(sans
+            .iter()
+            .any(|name| name.ipaddress() == Some(&[127, 0, 0, 1])));
     }
 }

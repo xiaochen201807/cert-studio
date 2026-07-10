@@ -1,18 +1,21 @@
 use crate::error::{AppError, AppResult};
 use crate::storage;
+use ::time::{Duration, OffsetDateTime};
 use base64::{engine::general_purpose, Engine as _};
 use openssl::{
+    asn1::Asn1Time,
     hash::MessageDigest,
     pkcs5::pbkdf2_hmac,
     pkey::PKey,
     symm::{decrypt_aead, encrypt_aead, Cipher},
     x509::X509,
 };
-use rcgen::{CertificateParams, KeyPair, DistinguishedName, DnType, IsCa, KeyUsagePurpose, BasicConstraints};
-use ::time::{OffsetDateTime, Duration};
-use x509_parser::prelude::*;
+use rcgen::{
+    BasicConstraints, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair, KeyUsagePurpose,
+};
+use sha2::{Digest, Sha256};
+use std::cmp::Ordering;
 use x509_parser::pem::parse_x509_pem;
-use sha2::{Sha256, Digest};
 
 const ROOT_CA_BACKUP_VERSION: u32 = 1;
 const ROOT_CA_BACKUP_ITERATIONS: usize = 200_000;
@@ -20,6 +23,7 @@ const ROOT_CA_BACKUP_SALT_LEN: usize = 16;
 const ROOT_CA_BACKUP_NONCE_LEN: usize = 12;
 const ROOT_CA_BACKUP_TAG_LEN: usize = 16;
 const ROOT_CA_BACKUP_AAD: &[u8] = b"cert-studio-root-ca-backup-v1";
+const ROOT_CA_BACKUP_MAX_BYTES: u64 = 1024 * 1024;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct RootCaInfo {
@@ -52,26 +56,28 @@ struct RootCaBackupFile {
 pub fn parse_cert_info(cert_pem: &str) -> AppResult<RootCaInfo> {
     let (_, pem) = parse_x509_pem(cert_pem.as_bytes())
         .map_err(|e| AppError::X509(format!("PEM 解析失败: {}", e)))?;
-    
-    let x509 = pem.parse_x509()
+
+    let x509 = pem
+        .parse_x509()
         .map_err(|e| AppError::X509(format!("X509 解析失败: {}", e)))?;
-    
+
     let subject = x509.subject().to_string();
     let issuer = x509.issuer().to_string();
-    
+
     // 直接使用 Display 实现获取时间字符串，格式可读且极其稳定
     let not_before = x509.validity().not_before.to_string();
     let not_after = x509.validity().not_after.to_string();
-    
+
     // 计算 SHA256 指纹
     let mut hasher = Sha256::new();
     hasher.update(&pem.contents);
     let hash = hasher.finalize();
-    let sha256_fingerprint = hash.iter()
+    let sha256_fingerprint = hash
+        .iter()
         .map(|b| format!("{:02X}", b))
         .collect::<Vec<String>>()
         .join(":");
-        
+
     Ok(RootCaInfo {
         subject,
         issuer,
@@ -88,38 +94,50 @@ pub fn create_root_ca(
     organization: Option<String>,
     days: u32,
 ) -> AppResult<RootCaInfo> {
+    let common_name = common_name.trim();
+    if common_name.is_empty() {
+        return Err(AppError::Custom(
+            "Root CA Common Name 不能为空。".to_string(),
+        ));
+    }
+    if !(1..=36_500).contains(&days) {
+        return Err(AppError::Custom(
+            "Root CA 有效期必须在 1 到 36500 天之间。".to_string(),
+        ));
+    }
+
     // 1. 生成密钥对
     let key_pair = KeyPair::generate()?;
-    
+
     // 2. 构造 CA 参数
     let mut params = CertificateParams::default();
     params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-    params.key_usages = vec![
-        KeyUsagePurpose::KeyCertSign,
-        KeyUsagePurpose::CrlSign,
-    ];
-    
+    params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
     let mut dn = DistinguishedName::new();
-    dn.push(DnType::CommonName, &common_name);
-    if let Some(ref org) = organization {
+    dn.push(DnType::CommonName, common_name);
+    if let Some(org) = organization
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         dn.push(DnType::OrganizationName, org);
     }
     params.distinguished_name = dn;
-    
+
     // 设定有效期
     let now = OffsetDateTime::now_utc();
     params.not_before = now;
     params.not_after = now + Duration::days(days as i64);
-    
+
     // 3. 生成证书
     let cert = params.self_signed(&key_pair)?;
     let cert_pem = cert.pem();
     let key_pem = key_pair.serialize_pem();
-    
+
     // 4. 保存到本地 (安全存储)
-    storage::save_root_ca_cert(&app_handle, &cert_pem)?;
-    storage::save_root_ca_key(&app_handle, &key_pem)?;
-    
+    storage::save_root_ca_material(&app_handle, &cert_pem, &key_pem)?;
+
     // 5. 解析并返回 CA 信息
     parse_cert_info(&cert_pem)
 }
@@ -133,13 +151,12 @@ pub fn import_root_ca(
     let info = validate_import_root_ca_pems(&cert_pem, &key_pem)?;
 
     // 2. 保存
-    storage::save_root_ca_cert(&app_handle, &cert_pem)?;
-    storage::save_root_ca_key(&app_handle, &key_pem)?;
-    
+    storage::save_root_ca_material(&app_handle, &cert_pem, &key_pem)?;
+
     Ok(info)
 }
 
-fn validate_import_root_ca_pems(cert_pem: &str, key_pem: &str) -> AppResult<RootCaInfo> {
+pub(crate) fn validate_import_root_ca_pems(cert_pem: &str, key_pem: &str) -> AppResult<RootCaInfo> {
     let cert = X509::from_pem(cert_pem.as_bytes())
         .map_err(|e| AppError::Custom(format!("Root CA 证书 PEM 解析失败: {}", e)))?;
     let key = PKey::private_key_from_pem(key_pem.as_bytes())
@@ -152,13 +169,33 @@ fn validate_import_root_ca_pems(cert_pem: &str, key_pem: &str) -> AppResult<Root
             "Root CA 证书与私钥不匹配，请确认选择的是同一套证书和私钥。".to_string(),
         ));
     }
+    if cert.subject_name().to_der()? != cert.issuer_name().to_der()? {
+        return Err(AppError::Custom(
+            "导入的证书不是自签名 Root CA。".to_string(),
+        ));
+    }
+    if !cert.verify(&cert_public_key)? {
+        return Err(AppError::Custom("Root CA 自签名验证失败。".to_string()));
+    }
+
+    let now = Asn1Time::days_from_now(0)?;
+    if cert.not_before().compare(&now)? == Ordering::Greater {
+        return Err(AppError::Custom("Root CA 尚未生效。".to_string()));
+    }
+    if cert.not_after().compare(&now)? != Ordering::Greater {
+        return Err(AppError::Custom("Root CA 已过期。".to_string()));
+    }
 
     KeyPair::from_pem(key_pem)
         .map_err(|e| AppError::Custom(format!("Root CA 私钥不是 rcgen 支持的 PEM 格式: {}", e)))?;
 
     let info = parse_cert_info(cert_pem)?;
-    CertificateParams::from_ca_cert_pem(cert_pem)
-        .map_err(|e| AppError::Custom(format!("Root CA 证书不是有效的 CA 证书或不受当前解析器支持: {}", e)))?;
+    CertificateParams::from_ca_cert_pem(cert_pem).map_err(|e| {
+        AppError::Custom(format!(
+            "Root CA 证书不是有效的 CA 证书或不受当前解析器支持: {}",
+            e
+        ))
+    })?;
 
     Ok(info)
 }
@@ -180,7 +217,10 @@ fn derive_backup_key(password: &str, salt: &[u8], iterations: usize) -> AppResul
     Ok(key)
 }
 
-fn encrypt_root_ca_backup(payload: &RootCaBackupPayload, password: &str) -> AppResult<RootCaBackupFile> {
+fn encrypt_root_ca_backup(
+    payload: &RootCaBackupPayload,
+    password: &str,
+) -> AppResult<RootCaBackupFile> {
     use rand::RngCore;
 
     let mut salt = [0u8; ROOT_CA_BACKUP_SALT_LEN];
@@ -212,7 +252,10 @@ fn encrypt_root_ca_backup(payload: &RootCaBackupPayload, password: &str) -> AppR
     })
 }
 
-fn decrypt_root_ca_backup(backup: &RootCaBackupFile, password: &str) -> AppResult<RootCaBackupPayload> {
+fn decrypt_root_ca_backup(
+    backup: &RootCaBackupFile,
+    password: &str,
+) -> AppResult<RootCaBackupPayload> {
     if backup.version != ROOT_CA_BACKUP_VERSION {
         return Err(AppError::Custom(format!(
             "不支持的 Root CA 备份包版本: {}",
@@ -220,7 +263,14 @@ fn decrypt_root_ca_backup(backup: &RootCaBackupFile, password: &str) -> AppResul
         )));
     }
     if backup.kdf != "PBKDF2-HMAC-SHA256" || backup.cipher != "AES-256-GCM" {
-        return Err(AppError::Custom("不支持的 Root CA 备份包加密参数。".to_string()));
+        return Err(AppError::Custom(
+            "不支持的 Root CA 备份包加密参数。".to_string(),
+        ));
+    }
+    if backup.iterations != ROOT_CA_BACKUP_ITERATIONS {
+        return Err(AppError::Custom(
+            "Root CA 备份包 KDF 迭代次数无效。".to_string(),
+        ));
     }
 
     let salt = general_purpose::STANDARD.decode(&backup.salt_base64)?;
@@ -228,8 +278,14 @@ fn decrypt_root_ca_backup(backup: &RootCaBackupFile, password: &str) -> AppResul
     let tag = general_purpose::STANDARD.decode(&backup.tag_base64)?;
     let ciphertext = general_purpose::STANDARD.decode(&backup.ciphertext_base64)?;
 
-    if nonce.len() != ROOT_CA_BACKUP_NONCE_LEN || tag.len() != ROOT_CA_BACKUP_TAG_LEN {
-        return Err(AppError::Custom("Root CA 备份包密文参数长度不正确。".to_string()));
+    if salt.len() != ROOT_CA_BACKUP_SALT_LEN
+        || nonce.len() != ROOT_CA_BACKUP_NONCE_LEN
+        || tag.len() != ROOT_CA_BACKUP_TAG_LEN
+        || ciphertext.len() > ROOT_CA_BACKUP_MAX_BYTES as usize
+    {
+        return Err(AppError::Custom(
+            "Root CA 备份包密文参数长度不正确。".to_string(),
+        ));
     }
 
     let key = derive_backup_key(password, &salt, backup.iterations)?;
@@ -259,12 +315,20 @@ pub fn export_root_ca_backup(
     let backup_json = serde_json::to_string_pretty(&backup)?;
 
     let out_path = std::path::Path::new(&output_dir);
-    if !out_path.exists() {
-        std::fs::create_dir_all(out_path)?;
+    if !out_path.exists() || !out_path.is_dir() {
+        return Err(AppError::Custom(
+            "备份导出目录不存在，请通过目录选择器选择已有目录。".to_string(),
+        ));
     }
 
-    let backup_path = out_path.join("cert-studio-root-ca-backup.json");
-    std::fs::write(&backup_path, backup_json)?;
+    let backup_path = out_path
+        .canonicalize()?
+        .join("cert-studio-root-ca-backup.json");
+    crate::fs_utils::atomic_write(
+        &backup_path,
+        backup_json.as_bytes(),
+        crate::fs_utils::PRIVATE_FILE_MODE,
+    )?;
 
     Ok(backup_path.to_string_lossy().to_string())
 }
@@ -272,10 +336,14 @@ pub fn export_root_ca_backup(
 #[tauri::command]
 pub fn import_root_ca_backup(
     app_handle: tauri::AppHandle,
-    backup_path: String,
+    backup_json: String,
     password: String,
 ) -> AppResult<RootCaInfo> {
-    let backup_json = std::fs::read_to_string(backup_path)?;
+    if backup_json.len() as u64 > ROOT_CA_BACKUP_MAX_BYTES {
+        return Err(AppError::Custom(
+            "Root CA 备份包超过 1 MiB 限制。".to_string(),
+        ));
+    }
     let backup: RootCaBackupFile = serde_json::from_str(&backup_json)?;
     let payload = decrypt_root_ca_backup(&backup, &password)?;
 
@@ -290,13 +358,15 @@ pub fn get_root_ca_info(app_handle: tauri::AppHandle) -> AppResult<RootCaInfo> {
 
 #[tauri::command]
 pub fn has_valid_root_ca(app_handle: tauri::AppHandle) -> bool {
-    storage::has_root_ca(&app_handle)
-}
-
-#[tauri::command]
-pub fn read_text_file(path: String) -> AppResult<String> {
-    let content = std::fs::read_to_string(path)?;
-    Ok(content)
+    let cert_pem = match storage::get_root_ca_cert(&app_handle) {
+        Ok(cert_pem) => cert_pem,
+        Err(_) => return false,
+    };
+    let key_pem = match storage::get_root_ca_key(&app_handle) {
+        Ok(key_pem) => key_pem,
+        Err(_) => return false,
+    };
+    validate_import_root_ca_pems(&cert_pem, &key_pem).is_ok()
 }
 
 #[tauri::command]
@@ -304,9 +374,11 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
     // 1. 获取根证书的绝对路径
     let cert_path = storage::get_root_ca_cert_path(&app_handle)?;
     if !cert_path.exists() {
-        return Err(AppError::Custom("未找到 Root CA 证书，请先生成或导入根证书。".to_string()));
+        return Err(AppError::Custom(
+            "未找到 Root CA 证书，请先生成或导入根证书。".to_string(),
+        ));
     }
-    
+
     // 2. 根据不同的操作系统执行不同的命令
     #[cfg(target_os = "macos")]
     {
@@ -322,12 +394,12 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
             .arg(cert_path)
             .status()
             .map_err(|e| AppError::Custom(format!("执行 security 命令失败: {}", e)))?;
-            
+
         if !status.success() {
             return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
         }
     }
-    
+
     #[cfg(target_os = "windows")]
     {
         use std::process::Command;
@@ -340,12 +412,12 @@ pub fn import_system_trust(app_handle: tauri::AppHandle) -> AppResult<()> {
             .arg(cert_path)
             .status()
             .map_err(|e| AppError::Custom(format!("执行 certutil 命令失败: {}", e)))?;
-            
+
         if !status.success() {
             return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
         }
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         use std::process::Command;
@@ -381,7 +453,7 @@ fi
             .arg(cert_path)
             .status()
             .map_err(|e| AppError::Custom(format!("执行 Linux 授权导入命令失败: {}", e)))?;
-            
+
         if !status.success() {
             return Err(AppError::Custom("授权取消或导入信任失败。".to_string()));
         }
@@ -398,10 +470,7 @@ mod tests {
         let key_pair = KeyPair::generate()?;
         let mut params = CertificateParams::default();
         params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
-        params.key_usages = vec![
-            KeyUsagePurpose::KeyCertSign,
-            KeyUsagePurpose::CrlSign,
-        ];
+        params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
 
         let mut dn = DistinguishedName::new();
         dn.push(DnType::CommonName, common_name);
@@ -481,5 +550,19 @@ mod tests {
             .expect_err("empty password should fail");
 
         assert!(err.to_string().contains("请设置 Root CA 备份包密码"));
+    }
+
+    #[test]
+    fn backup_decrypt_rejects_unbounded_kdf_iterations() {
+        let payload = RootCaBackupPayload {
+            cert_pem: "cert".to_string(),
+            key_pem: "key".to_string(),
+        };
+        let mut backup = encrypt_root_ca_backup(&payload, "strong-password").unwrap();
+        backup.iterations = usize::MAX;
+
+        let err = decrypt_root_ca_backup(&backup, "strong-password")
+            .expect_err("unbounded iterations should fail before PBKDF2");
+        assert!(err.to_string().contains("迭代次数无效"));
     }
 }
