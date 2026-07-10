@@ -20,6 +20,13 @@ concurrency:
 
 jobs:
   build:
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,7 +70,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: cargo-${{ runner.os }}-${{ matrix.arch_name }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          key: cargo-${{ runner.os }}-${{ matrix.arch_name }}-${{ hashFiles('src-tauri/Cargo.toml', 'src-tauri/Cargo.lock') }}
           restore-keys: |
             cargo-${{ runner.os }}-${{ matrix.arch_name }}-
             cargo-${{ runner.os }}-
@@ -88,8 +95,14 @@ jobs:
       - name: install node dependencies
         run: npm ci
 
-      - name: generate tauri icons
-        run: npx tauri icon ./src/assets/logo.png
+      - name: verify release version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: node scripts/verify-release-version.mjs "$RELEASE_TAG"
+
+      - name: verify locked rust dependencies
+        run: cargo metadata --locked --manifest-path src-tauri/Cargo.toml --format-version 1 --no-deps
 
       - name: build tauri application
         run: |
@@ -130,6 +143,11 @@ jobs:
             )
           done < <(find release-artifacts -mindepth 1 -maxdepth 1 -type d -print0)
 
+          (
+            cd release-assets
+            sha256sum *.zip > SHA256SUMS
+          )
+
           ls -lh release-assets
 
       - name: create github release
@@ -140,9 +158,9 @@ jobs:
           tag="${RELEASE_TAG}"
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" release-assets/*.zip --clobber
+            gh release upload "$tag" release-assets/*.zip release-assets/SHA256SUMS --clobber
           else
-            gh release create "$tag" release-assets/*.zip \
+            gh release create "$tag" release-assets/*.zip release-assets/SHA256SUMS \
               --title "$tag" \
               --generate-notes \
               --verify-tag

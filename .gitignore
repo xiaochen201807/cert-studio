@@ -2,7 +2,7 @@
 # Rust / Cargo
 # ============================
 target/
-Cargo.lock
+# Desktop applications commit Cargo.lock for reproducible builds.
 
 # ============================
 # Node.js / npm

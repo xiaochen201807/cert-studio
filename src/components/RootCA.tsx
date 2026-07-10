@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { ShieldCheck, Key, Calendar, Fingerprint, Upload, Plus, Download, RefreshCw, HelpCircle } from "lucide-react";
 
 interface RootCAProps {
@@ -83,6 +84,8 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
         keyPem: importKeyPem,
       });
       setCaInfo(info);
+      setImportCertPem("");
+      setImportKeyPem("");
       onCaChange();
       alert("🎉 根证书与私钥已验证匹配并成功导入！");
     } catch (err) {
@@ -100,7 +103,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
         filters: [{ name: "PEM 证书 (*.crt, *.pem)", extensions: ["crt", "pem", "cer"] }]
       });
       if (file && typeof file === "string") {
-        const content = await invoke<string>("read_text_file", { path: file });
+        const content = await readTextFile(file);
         setImportCertPem(content);
       }
     } catch (err) {
@@ -116,7 +119,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
         filters: [{ name: "PEM 私钥 (*.key, *.pem)", extensions: ["key", "pem"] }]
       });
       if (file && typeof file === "string") {
-        const content = await invoke<string>("read_text_file", { path: file });
+        const content = await readTextFile(file);
         setImportKeyPem(content);
       }
     } catch (err) {
@@ -183,7 +186,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
     const password = promptBackupPassword("恢复 Root CA 备份包");
     if (!password) return;
 
-    if (hasRootCa && !confirm("恢复备份包会替换当前 Root CA。旧 Root CA 签发的证书可能需要重新确认信任链。是否继续？")) {
+    if (hasRootCa && !confirm("恢复备份包会替换当前 Root CA。若旧 Root CA 已导入系统信任区，应用不会自动删除，请在确认不再使用后手动移除。是否继续？")) {
       return;
     }
 
@@ -193,8 +196,9 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
         filters: [{ name: "Cert Studio Root CA Backup (*.json)", extensions: ["json"] }]
       });
       if (file && typeof file === "string") {
+        const backupJson = await readTextFile(file);
         const info = await invoke<RootCaInfo>("import_root_ca_backup", {
-          backupPath: file,
+          backupJson,
           password,
         });
         setCaInfo(info);
@@ -208,7 +212,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
 
   const handleResetRootCa = () => {
     const firstConfirm = confirm(
-      "重新初始化会替换当前 Root CA。旧 Root CA 签发的服务端证书将不再被新的 Root CA 信任，客户端也需要重新安装新的根证书。是否继续？"
+      "重新初始化会替换当前 Root CA。客户端需要安装新的根证书；若旧 Root CA 已导入系统信任区，应用不会自动删除，请在确认不再使用后手动移除。是否继续？"
     );
     if (!firstConfirm) return;
 
@@ -241,7 +245,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
       <div>
         <h2 style={{ fontSize: "24px", fontWeight: 700, marginBottom: "6px" }}>Root CA 根证书管理</h2>
         <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
-          创建、导入、查看和导出您的 Root CA。私钥存储在硬件密钥环或本地专有加密文件中，杜绝明文落地。
+          创建、导入、查看和导出您的 Root CA。私钥优先存储在系统密钥环，回退存储使用本地加密文件且不会明文落盘。
         </p>
       </div>
 
@@ -254,7 +258,7 @@ const RootCA: React.FC<RootCAProps> = ({ hasRootCa, onCaChange }) => {
                 <ShieldCheck size={24} style={{ color: "var(--accent-neon)" }} />
                 <h3 style={{ fontSize: "18px", fontWeight: 600 }}>Root CA 已就绪</h3>
               </div>
-              <span className="badge badge-active">受信任</span>
+              <span className="badge badge-active">材料完整</span>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>

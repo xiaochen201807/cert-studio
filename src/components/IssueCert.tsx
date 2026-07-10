@@ -10,10 +10,8 @@ interface IssueCertProps {
 }
 
 interface CertBundle {
+  bundle_id: string;
   cert_pem: string;
-  key_pem: string;
-  fullchain_pem: string;
-  pfx_base64: string | null;
   nginx_config: string;
   electron_readme: string;
 }
@@ -49,6 +47,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
       dnsInput,
       ipInput,
       pfxPassword,
+      days,
     });
     if (validation.error) {
       alert(validation.error);
@@ -74,6 +73,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
         },
       });
       setBundle(res);
+      setPfxPassword("");
       alert("🎉 服务端 HTTPS 证书签发成功！可在下方预览配置并一键导出。");
     } catch (err) {
       alert("签发失败: " + err);
@@ -96,7 +96,7 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
       });
       if (dir && typeof dir === "string") {
         await invoke("export_cert_bundle", {
-          bundle: bundle,
+          bundleId: bundle.bundle_id,
           outputDir: dir
         });
         alert(`🎉 证书束已成功导出！\n\n导出目录包含以下文件：\n- server.crt (证书)\n- server.key (私钥)\n- server.pfx (PFX/PKCS#12 证书包)\n- fullchain.pem (含根的完整链)\n- company-root-ca.crt (根证书)\n- nginx.conf (Nginx 配置示例)\n- electron.md (Electron 接入说明)\n\nserver.pfx 使用签发时设置的 PFX 密码保护。\n\n路径: ${dir}`);
@@ -209,6 +209,8 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
             <input
               type="number"
               required
+              min={1}
+              max={825}
               value={days}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDays(Number(e.target.value))}
               placeholder="默认 365 天"
@@ -222,12 +224,13 @@ const IssueCert: React.FC<IssueCertProps> = ({ hasRootCa, onNavigate }) => {
             <input
               type="password"
               required
+              minLength={8}
               value={pfxPassword}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPfxPassword(e.target.value)}
               placeholder="用于保护 server.pfx 中的私钥"
             />
             <span style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: "1.4" }}>
-              导出的 server.pfx 会使用该密码保护，适合导入 Windows、IIS、.NET 或其他需要 PFX/PKCS#12 的工具链。请自行妥善保存该密码。
+              至少 8 个字符。导出的 server.pfx 会使用该密码保护，请自行妥善保存。
             </span>
           </div>
 

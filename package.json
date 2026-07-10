@@ -1,11 +1,12 @@
 {
   "name": "cert-studio",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.17",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "vitest run",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -23,6 +24,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.2.2",
-    "vite": "^7.3.6"
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
   }
 }
