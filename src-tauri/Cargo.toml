@@ -20,4 +20,4 @@ keyring = { version = "3.0", features = ["apple-native", "windows-native"] }
 rand = "0.8"
 sha2 = "0.11"
 openssl = { version = "0.10", features = ["vendored"] }
-base64 = "0.22"
+base64 = "0.23"
